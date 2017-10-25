@@ -60,253 +60,632 @@
 /******/ 	__webpack_require__.p = "";
 /******/
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(__webpack_require__.s = 1);
+/******/ 	return __webpack_require__(__webpack_require__.s = 4);
 /******/ })
 /************************************************************************/
 /******/ ([
 /* 0 */
 /***/ (function(module, exports) {
 
+/**
+ * Wraps a GeoJSON {@link Geometry} in a GeoJSON {@link Feature}.
+ *
+ * @name feature
+ * @param {Geometry} geometry input geometry
+ * @param {Object} [properties={}] an Object of key-value pairs to add as properties
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {Feature} a GeoJSON Feature
+ * @example
+ * var geometry = {
+ *   "type": "Point",
+ *   "coordinates": [110, 50]
+ * };
+ *
+ * var feature = turf.feature(geometry);
+ *
+ * //=feature
+ */
+function feature(geometry, properties, bbox, id) {
+    if (geometry === undefined) throw new Error('geometry is required');
+    if (properties && properties.constructor !== Object) throw new Error('properties must be an Object');
+    if (bbox && bbox.length !== 4) throw new Error('bbox must be an Array of 4 numbers');
+    if (id && ['string', 'number'].indexOf(typeof id) === -1) throw new Error('id must be a number or a string');
+
+    var feat = {type: 'Feature'};
+    if (id) feat.id = id;
+    if (bbox) feat.bbox = bbox;
+    feat.properties = properties || {};
+    feat.geometry = geometry;
+    return feat;
+}
+
+/**
+ * Creates a GeoJSON {@link Geometry} from a Geometry string type & coordinates.
+ * For GeometryCollection type use `helpers.geometryCollection`
+ *
+ * @name geometry
+ * @param {string} type Geometry Type
+ * @param {Array<number>} coordinates Coordinates
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @returns {Geometry} a GeoJSON Geometry
+ * @example
+ * var type = 'Point';
+ * var coordinates = [110, 50];
+ *
+ * var geometry = turf.geometry(type, coordinates);
+ *
+ * //=geometry
+ */
+function geometry(type, coordinates, bbox) {
+    // Validation
+    if (!type) throw new Error('type is required');
+    if (!coordinates) throw new Error('coordinates is required');
+    if (!Array.isArray(coordinates)) throw new Error('coordinates must be an Array');
+    if (bbox && bbox.length !== 4) throw new Error('bbox must be an Array of 4 numbers');
+
+    var geom;
+    switch (type) {
+    case 'Point': geom = point(coordinates).geometry; break;
+    case 'LineString': geom = lineString(coordinates).geometry; break;
+    case 'Polygon': geom = polygon(coordinates).geometry; break;
+    case 'MultiPoint': geom = multiPoint(coordinates).geometry; break;
+    case 'MultiLineString': geom = multiLineString(coordinates).geometry; break;
+    case 'MultiPolygon': geom = multiPolygon(coordinates).geometry; break;
+    default: throw new Error(type + ' is invalid');
+    }
+    if (bbox) geom.bbox = bbox;
+    return geom;
+}
+
+/**
+ * Takes coordinates and properties (optional) and returns a new {@link Point} feature.
+ *
+ * @name point
+ * @param {Array<number>} coordinates longitude, latitude position (each in decimal degrees)
+ * @param {Object} [properties={}] an Object of key-value pairs to add as properties
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {Feature<Point>} a Point feature
+ * @example
+ * var point = turf.point([-75.343, 39.984]);
+ *
+ * //=point
+ */
+function point(coordinates, properties, bbox, id) {
+    if (!coordinates) throw new Error('No coordinates passed');
+    if (coordinates.length === undefined) throw new Error('Coordinates must be an array');
+    if (coordinates.length < 2) throw new Error('Coordinates must be at least 2 numbers long');
+    if (!isNumber(coordinates[0]) || !isNumber(coordinates[1])) throw new Error('Coordinates must contain numbers');
+
+    return feature({
+        type: 'Point',
+        coordinates: coordinates
+    }, properties, bbox, id);
+}
+
+/**
+ * Takes an array of LinearRings and optionally an {@link Object} with properties and returns a {@link Polygon} feature.
+ *
+ * @name polygon
+ * @param {Array<Array<Array<number>>>} coordinates an array of LinearRings
+ * @param {Object} [properties={}] an Object of key-value pairs to add as properties
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {Feature<Polygon>} a Polygon feature
+ * @throws {Error} throw an error if a LinearRing of the polygon has too few positions
+ * or if a LinearRing of the Polygon does not have matching Positions at the beginning & end.
+ * @example
+ * var polygon = turf.polygon([[
+ *   [-2.275543, 53.464547],
+ *   [-2.275543, 53.489271],
+ *   [-2.215118, 53.489271],
+ *   [-2.215118, 53.464547],
+ *   [-2.275543, 53.464547]
+ * ]], { name: 'poly1', population: 400});
+ *
+ * //=polygon
+ */
+function polygon(coordinates, properties, bbox, id) {
+    if (!coordinates) throw new Error('No coordinates passed');
+
+    for (var i = 0; i < coordinates.length; i++) {
+        var ring = coordinates[i];
+        if (ring.length < 4) {
+            throw new Error('Each LinearRing of a Polygon must have 4 or more Positions.');
+        }
+        for (var j = 0; j < ring[ring.length - 1].length; j++) {
+            // Check if first point of Polygon contains two numbers
+            if (i === 0 && j === 0 && !isNumber(ring[0][0]) || !isNumber(ring[0][1])) throw new Error('Coordinates must contain numbers');
+            if (ring[ring.length - 1][j] !== ring[0][j]) {
+                throw new Error('First and last Position are not equivalent.');
+            }
+        }
+    }
+
+    return feature({
+        type: 'Polygon',
+        coordinates: coordinates
+    }, properties, bbox, id);
+}
+
+/**
+ * Creates a {@link LineString} based on a
+ * coordinate array. Properties can be added optionally.
+ *
+ * @name lineString
+ * @param {Array<Array<number>>} coordinates an array of Positions
+ * @param {Object} [properties={}] an Object of key-value pairs to add as properties
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {Feature<LineString>} a LineString feature
+ * @throws {Error} if no coordinates are passed
+ * @example
+ * var linestring1 = turf.lineString([
+ *   [-21.964416, 64.148203],
+ *   [-21.956176, 64.141316],
+ *   [-21.93901, 64.135924],
+ *   [-21.927337, 64.136673]
+ * ]);
+ * var linestring2 = turf.lineString([
+ *   [-21.929054, 64.127985],
+ *   [-21.912918, 64.134726],
+ *   [-21.916007, 64.141016],
+ *   [-21.930084, 64.14446]
+ * ], {name: 'line 1', distance: 145});
+ *
+ * //=linestring1
+ *
+ * //=linestring2
+ */
+function lineString(coordinates, properties, bbox, id) {
+    if (!coordinates) throw new Error('No coordinates passed');
+    if (coordinates.length < 2) throw new Error('Coordinates must be an array of two or more positions');
+    // Check if first point of LineString contains two numbers
+    if (!isNumber(coordinates[0][1]) || !isNumber(coordinates[0][1])) throw new Error('Coordinates must contain numbers');
+
+    return feature({
+        type: 'LineString',
+        coordinates: coordinates
+    }, properties, bbox, id);
+}
+
+/**
+ * Takes one or more {@link Feature|Features} and creates a {@link FeatureCollection}.
+ *
+ * @name featureCollection
+ * @param {Feature[]} features input features
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {FeatureCollection} a FeatureCollection of input features
+ * @example
+ * var features = [
+ *  turf.point([-75.343, 39.984], {name: 'Location A'}),
+ *  turf.point([-75.833, 39.284], {name: 'Location B'}),
+ *  turf.point([-75.534, 39.123], {name: 'Location C'})
+ * ];
+ *
+ * var collection = turf.featureCollection(features);
+ *
+ * //=collection
+ */
+function featureCollection(features, bbox, id) {
+    if (!features) throw new Error('No features passed');
+    if (!Array.isArray(features)) throw new Error('features must be an Array');
+    if (bbox && bbox.length !== 4) throw new Error('bbox must be an Array of 4 numbers');
+    if (id && ['string', 'number'].indexOf(typeof id) === -1) throw new Error('id must be a number or a string');
+
+    var fc = {type: 'FeatureCollection'};
+    if (id) fc.id = id;
+    if (bbox) fc.bbox = bbox;
+    fc.features = features;
+    return fc;
+}
+
+/**
+ * Creates a {@link Feature<MultiLineString>} based on a
+ * coordinate array. Properties can be added optionally.
+ *
+ * @name multiLineString
+ * @param {Array<Array<Array<number>>>} coordinates an array of LineStrings
+ * @param {Object} [properties={}] an Object of key-value pairs to add as properties
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {Feature<MultiLineString>} a MultiLineString feature
+ * @throws {Error} if no coordinates are passed
+ * @example
+ * var multiLine = turf.multiLineString([[[0,0],[10,10]]]);
+ *
+ * //=multiLine
+ */
+function multiLineString(coordinates, properties, bbox, id) {
+    if (!coordinates) throw new Error('No coordinates passed');
+
+    return feature({
+        type: 'MultiLineString',
+        coordinates: coordinates
+    }, properties, bbox, id);
+}
+
+/**
+ * Creates a {@link Feature<MultiPoint>} based on a
+ * coordinate array. Properties can be added optionally.
+ *
+ * @name multiPoint
+ * @param {Array<Array<number>>} coordinates an array of Positions
+ * @param {Object} [properties={}] an Object of key-value pairs to add as properties
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {Feature<MultiPoint>} a MultiPoint feature
+ * @throws {Error} if no coordinates are passed
+ * @example
+ * var multiPt = turf.multiPoint([[0,0],[10,10]]);
+ *
+ * //=multiPt
+ */
+function multiPoint(coordinates, properties, bbox, id) {
+    if (!coordinates) throw new Error('No coordinates passed');
+
+    return feature({
+        type: 'MultiPoint',
+        coordinates: coordinates
+    }, properties, bbox, id);
+}
+
+/**
+ * Creates a {@link Feature<MultiPolygon>} based on a
+ * coordinate array. Properties can be added optionally.
+ *
+ * @name multiPolygon
+ * @param {Array<Array<Array<Array<number>>>>} coordinates an array of Polygons
+ * @param {Object} [properties={}] an Object of key-value pairs to add as properties
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {Feature<MultiPolygon>} a multipolygon feature
+ * @throws {Error} if no coordinates are passed
+ * @example
+ * var multiPoly = turf.multiPolygon([[[[0,0],[0,10],[10,10],[10,0],[0,0]]]]);
+ *
+ * //=multiPoly
+ *
+ */
+function multiPolygon(coordinates, properties, bbox, id) {
+    if (!coordinates) throw new Error('No coordinates passed');
+
+    return feature({
+        type: 'MultiPolygon',
+        coordinates: coordinates
+    }, properties, bbox, id);
+}
+
+/**
+ * Creates a {@link Feature<GeometryCollection>} based on a
+ * coordinate array. Properties can be added optionally.
+ *
+ * @name geometryCollection
+ * @param {Array<Geometry>} geometries an array of GeoJSON Geometries
+ * @param {Object} [properties={}] an Object of key-value pairs to add as properties
+ * @param {Array<number>} [bbox] BBox [west, south, east, north]
+ * @param {string|number} [id] Identifier
+ * @returns {Feature<GeometryCollection>} a GeoJSON GeometryCollection Feature
+ * @example
+ * var pt = {
+ *     "type": "Point",
+ *       "coordinates": [100, 0]
+ *     };
+ * var line = {
+ *     "type": "LineString",
+ *     "coordinates": [ [101, 0], [102, 1] ]
+ *   };
+ * var collection = turf.geometryCollection([pt, line]);
+ *
+ * //=collection
+ */
+function geometryCollection(geometries, properties, bbox, id) {
+    if (!geometries) throw new Error('geometries is required');
+    if (!Array.isArray(geometries)) throw new Error('geometries must be an Array');
+
+    return feature({
+        type: 'GeometryCollection',
+        geometries: geometries
+    }, properties, bbox, id);
+}
+
+// https://en.wikipedia.org/wiki/Great-circle_distance#Radius_for_spherical_Earth
+var factors = {
+    miles: 3960,
+    nauticalmiles: 3441.145,
+    degrees: 57.2957795,
+    radians: 1,
+    inches: 250905600,
+    yards: 6969600,
+    meters: 6373000,
+    metres: 6373000,
+    centimeters: 6.373e+8,
+    centimetres: 6.373e+8,
+    kilometers: 6373,
+    kilometres: 6373,
+    feet: 20908792.65
+};
+
+var areaFactors = {
+    kilometers: 0.000001,
+    kilometres: 0.000001,
+    meters: 1,
+    metres: 1,
+    centimetres: 10000,
+    millimeter: 1000000,
+    acres: 0.000247105,
+    miles: 3.86e-7,
+    yards: 1.195990046,
+    feet: 10.763910417,
+    inches: 1550.003100006
+};
+/**
+ * Round number to precision
+ *
+ * @param {number} num Number
+ * @param {number} [precision=0] Precision
+ * @returns {number} rounded number
+ * @example
+ * turf.round(120.4321)
+ * //=120
+ *
+ * turf.round(120.4321, 2)
+ * //=120.43
+ */
+function round(num, precision) {
+    if (num === undefined || num === null || isNaN(num)) throw new Error('num is required');
+    if (precision && !(precision >= 0)) throw new Error('precision must be a positive number');
+    var multiplier = Math.pow(10, precision || 0);
+    return Math.round(num * multiplier) / multiplier;
+}
+
+/**
+ * Convert a distance measurement (assuming a spherical Earth) from radians to a more friendly unit.
+ * Valid units: miles, nauticalmiles, inches, yards, meters, metres, kilometers, centimeters, feet
+ *
+ * @name radiansToDistance
+ * @param {number} radians in radians across the sphere
+ * @param {string} [units=kilometers] can be degrees, radians, miles, or kilometers inches, yards, metres, meters, kilometres, kilometers.
+ * @returns {number} distance
+ */
+function radiansToDistance(radians, units) {
+    if (radians === undefined || radians === null) throw new Error('radians is required');
+
+    var factor = factors[units || 'kilometers'];
+    if (!factor) throw new Error('units is invalid');
+    return radians * factor;
+}
+
+/**
+ * Convert a distance measurement (assuming a spherical Earth) from a real-world unit into radians
+ * Valid units: miles, nauticalmiles, inches, yards, meters, metres, kilometers, centimeters, feet
+ *
+ * @name distanceToRadians
+ * @param {number} distance in real units
+ * @param {string} [units=kilometers] can be degrees, radians, miles, or kilometers inches, yards, metres, meters, kilometres, kilometers.
+ * @returns {number} radians
+ */
+function distanceToRadians(distance, units) {
+    if (distance === undefined || distance === null) throw new Error('distance is required');
+
+    var factor = factors[units || 'kilometers'];
+    if (!factor) throw new Error('units is invalid');
+    return distance / factor;
+}
+
+/**
+ * Convert a distance measurement (assuming a spherical Earth) from a real-world unit into degrees
+ * Valid units: miles, nauticalmiles, inches, yards, meters, metres, centimeters, kilometres, feet
+ *
+ * @name distanceToDegrees
+ * @param {number} distance in real units
+ * @param {string} [units=kilometers] can be degrees, radians, miles, or kilometers inches, yards, metres, meters, kilometres, kilometers.
+ * @returns {number} degrees
+ */
+function distanceToDegrees(distance, units) {
+    return radians2degrees(distanceToRadians(distance, units));
+}
+
+/**
+ * Converts any bearing angle from the north line direction (positive clockwise)
+ * and returns an angle between 0-360 degrees (positive clockwise), 0 being the north line
+ *
+ * @name bearingToAngle
+ * @param {number} bearing angle, between -180 and +180 degrees
+ * @returns {number} angle between 0 and 360 degrees
+ */
+function bearingToAngle(bearing) {
+    if (bearing === null || bearing === undefined) throw new Error('bearing is required');
+
+    var angle = bearing % 360;
+    if (angle < 0) angle += 360;
+    return angle;
+}
+
+/**
+ * Converts an angle in radians to degrees
+ *
+ * @name radians2degrees
+ * @param {number} radians angle in radians
+ * @returns {number} degrees between 0 and 360 degrees
+ */
+function radians2degrees(radians) {
+    if (radians === null || radians === undefined) throw new Error('radians is required');
+
+    var degrees = radians % (2 * Math.PI);
+    return degrees * 180 / Math.PI;
+}
+
+/**
+ * Converts an angle in degrees to radians
+ *
+ * @name degrees2radians
+ * @param {number} degrees angle between 0 and 360 degrees
+ * @returns {number} angle in radians
+ */
+function degrees2radians(degrees) {
+    if (degrees === null || degrees === undefined) throw new Error('degrees is required');
+
+    var radians = degrees % 360;
+    return radians * Math.PI / 180;
+}
+
+
+/**
+ * Converts a distance to the requested unit.
+ * Valid units: miles, nauticalmiles, inches, yards, meters, metres, kilometers, centimeters, feet
+ *
+ * @param {number} distance to be converted
+ * @param {string} originalUnit of the distance
+ * @param {string} [finalUnit=kilometers] returned unit
+ * @returns {number} the converted distance
+ */
+function convertDistance(distance, originalUnit, finalUnit) {
+    if (distance === null || distance === undefined) throw new Error('distance is required');
+    if (!(distance >= 0)) throw new Error('distance must be a positive number');
+
+    var convertedDistance = radiansToDistance(distanceToRadians(distance, originalUnit), finalUnit || 'kilometers');
+    return convertedDistance;
+}
+
+/**
+ * Converts a area to the requested unit.
+ * Valid units: kilometers, kilometres, meters, metres, centimetres, millimeter, acre, mile, yard, foot, inch
+ * @param {number} area to be converted
+ * @param {string} [originalUnit=meters] of the distance
+ * @param {string} [finalUnit=kilometers] returned unit
+ * @returns {number} the converted distance
+ */
+function convertArea(area, originalUnit, finalUnit) {
+    if (area === null || area === undefined) throw new Error('area is required');
+    if (!(area >= 0)) throw new Error('area must be a positive number');
+
+    var startFactor = areaFactors[originalUnit || 'meters'];
+    if (!startFactor) throw new Error('invalid original units');
+
+    var finalFactor = areaFactors[finalUnit || 'kilometers'];
+    if (!finalFactor) throw new Error('invalid final units');
+
+    return (area / startFactor) * finalFactor;
+}
+
+/**
+ * isNumber
+ *
+ * @param {*} num Number to validate
+ * @returns {boolean} true/false
+ * @example
+ * turf.isNumber(123)
+ * //=true
+ * turf.isNumber('foo')
+ * //=false
+ */
+function isNumber(num) {
+    return !isNaN(num) && num !== null && !Array.isArray(num);
+}
+
+module.exports = {
+    feature: feature,
+    geometry: geometry,
+    featureCollection: featureCollection,
+    geometryCollection: geometryCollection,
+    point: point,
+    multiPoint: multiPoint,
+    lineString: lineString,
+    multiLineString: multiLineString,
+    polygon: polygon,
+    multiPolygon: multiPolygon,
+    radiansToDistance: radiansToDistance,
+    distanceToRadians: distanceToRadians,
+    distanceToDegrees: distanceToDegrees,
+    radians2degrees: radians2degrees,
+    degrees2radians: degrees2radians,
+    bearingToAngle: bearingToAngle,
+    convertDistance: convertDistance,
+    convertArea: convertArea,
+    round: round,
+    isNumber: isNumber
+};
+
+
+/***/ }),
+/* 1 */,
+/* 2 */
+/***/ (function(module, exports) {
+
 module.exports = L;
 
 /***/ }),
-/* 1 */
+/* 3 */,
+/* 4 */
 /***/ (function(module, exports, __webpack_require__) {
 
-__webpack_require__(2);
-__webpack_require__(4);
-module.exports = __webpack_require__(6);
+__webpack_require__(5);
+__webpack_require__(14);
+__webpack_require__(15);
+module.exports = __webpack_require__(17);
 
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports, __webpack_require__) {
+/* 5 */
+/***/ (function(module, exports) {
 
-var L, _,
-  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+var extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
-
-L = __webpack_require__(0);
-
-_ = __webpack_require__(3);
-
-L.Cutting = {};
-
-L.Cutting.Event = {};
-
-L.Cutting.Event.START = "cut:start";
-
-L.Cutting.Event.STOP = "cut:stop";
-
-L.Cutting.Event.SELECT = "cut:select";
-
-L.Cutting.Event.UNSELECT = "cut:unselect";
 
 L.Cut = (function(superClass) {
   extend(Cut, superClass);
 
   Cut.TYPE = 'cut';
 
-  function Cut(map, options) {
-    this.type = this.constructor.TYPE;
-    this._map = map;
-    Cut.__super__.constructor.call(this, map);
-    this.options = _.merge(this.options, options);
-    this._featureGroup = options.featureGroup;
-    this._activeLayer = void 0;
-    this._uneditedLayerProps = [];
-    if (!(this._featureGroup instanceof L.FeatureGroup)) {
-      throw new Error('options.featureGroup must be a L.FeatureGroup');
-    }
-  }
-
-  Cut.prototype.enable = function() {
-    if (this._enabled || !this._hasAvailableLayers()) {
-      return;
-    }
-    this.fire('enabled', {
-      handler: this.type
-    });
-    this._map.fire(L.Cutting.Event.START, {
-      handler: this.type
-    });
-    Cut.__super__.enable.apply(this, arguments);
-    this._featureGroup.on('layeradd', this._enableLayer, this);
-    this._featureGroup.on('layerremove', this._disableLayer, this);
-    this._map.on(L.Cutting.Event.SELECT, this._startCutDrawing, this);
-    return this._map.on(L.Draw.Event.CREATED, this._stopCutDrawing, this);
-  };
-
-  Cut.prototype.disable = function() {
-    if (!this._enabled) {
-      return;
-    }
-    this._featureGroup.off('layeradd', this._enableLayer, this);
-    this._featureGroup.off('layerremove', this._disableLayer, this);
-    Cut.__super__.disable.apply(this, arguments);
-    this._map.fire(L.Cutting.Event.STOP, {
-      handler: this.type
-    });
-    this._map.off(L.Cutting.Event.SELECT, this._startCutDrawing, this);
-    this._map.off(L.Cutting.Event.UNSELECT, this._stopCutDrawing, this);
-    this._map.off(L.Draw.Event.CREATED, this._stopCutDrawing, this);
-    this.fire('disabled', {
-      handler: this.type
-    });
-  };
-
-  Cut.prototype.addHooks = function() {
-    return this._featureGroup.eachLayer(this._enableLayer, this);
-  };
-
-  Cut.prototype.removeHooks = function() {
-    return this._featureGroup.eachLayer(this._disableLayer, this);
-  };
-
-  Cut.prototype.save = function() {
-    var selectedLayers;
-    selectedLayers = new L.LayerGroup;
-    this._featureGroup.eachLayer(function(layer) {
-      if (layer.selected) {
-        selectedLayers.addLayer(layer);
-        return layer.selected = false;
-      }
-    });
-    this._map.fire(L.Cutting.Event.SELECTED, {
-      layers: selectedLayers
-    });
-  };
-
-  Cut.prototype._enableLayer = function(e) {
-    var layer, pathOptions;
-    layer = e.layer || e.target || e;
-    layer.options.original = L.extend({}, layer.options);
-    if (this.options.disabledPathOptions) {
-      pathOptions = L.Util.extend({}, this.options.disabledPathOptions);
-      if (pathOptions.maintainColor) {
-        pathOptions.color = layer.options.color;
-        pathOptions.fillColor = layer.options.fillColor;
-      }
-      layer.options.disabled = pathOptions;
-    }
-    if (this.options.selectedPathOptions) {
-      pathOptions = L.Util.extend({}, this.options.selectedPathOptions);
-      if (pathOptions.maintainColor) {
-        pathOptions.color = layer.options.color;
-        pathOptions.fillColor = layer.options.fillColor;
-      }
-      layer.options.selected = pathOptions;
-    }
-    layer.setStyle(layer.options.disabled);
-    layer.on('click', this._activate, this);
-    return layer.on('touchstart', this._activate, this);
-  };
-
-  Cut.prototype._disableLayer = function(e) {
-    var layer;
-    layer = e.layer || e.target || e;
-    layer.selected = false;
-    if (this.options.selectedPathOptions) {
-      layer.setStyle(layer.options.original);
-    }
-    layer.off('click', this._activate, this);
-    layer.off('touchstart', this._activate, this);
-    delete layer.options.disabled;
-    delete layer.options.selected;
-    return delete layer.options.original;
-  };
-
-  Cut.prototype._activate = function(e) {
-    var layer;
-    layer = e.target;
-    if (!layer.selected) {
-      layer.selected = true;
-      layer.setStyle(layer.options.selected);
-      if (this._activeLayer) {
-        this._activeLayer.selected = false;
-        this._activeLayer.setStyle(this._activeLayer.options.disabled);
-      }
-      this._activeLayer = layer;
-      return this._map.fire(L.Cutting.Event.SELECT, {
-        layer: this._activeLayer
-      });
-    } else {
-      layer.selected = false;
-      layer.setStyle(layer.options.disabled);
-      this._activeLayer = null;
-      return this._map.fire(L.Cutting.Event.UNSELECT, {
-        layer: layer
-      });
-    }
-  };
-
-  Cut.prototype._startCutDrawing = function(e) {
-    var pathOptions;
-    this._backupLayer(this._activeLayer);
-    this._activeLayer.cutting = new L.Draw.Polygon(this._map);
-    if (this.options.cuttingPathOptions) {
-      pathOptions = L.Util.extend({}, this.options.cuttingPathOptions);
-      if (pathOptions.maintainColor) {
-        pathOptions.color = layer.options.color;
-        pathOptions.fillColor = layer.options.fillColor;
-      }
-      this._activeLayer.options.cutting = pathOptions;
-    }
-    return this._activeLayer.cutting.enable();
-  };
-
-  Cut.prototype._stopCutDrawing = function(e) {
-    this._activeLayer.cutting.disable();
-    return this._activeLayer._poly = this._activeLayer;
-  };
-
-  Cut.prototype._backupLayer = function(layer) {
-    var id;
-    id = L.Util.stamp(layer);
-    if (!this._uneditedLayerProps[id]) {
-      if (layer instanceof L.Polyline || layer instanceof L.Polygon || layer instanceof L.Rectangle) {
-        return this._uneditedLayerProps[id] = {
-          latlngs: L.LatLngUtil.cloneLatLngs(layer.getLatLngs())
-        };
-      } else if (layer instanceof L.Circle) {
-        return this._uneditedLayerProps[id] = {
-          latlng: L.LatLngUtil.cloneLatLng(layer.getLatLng()),
-          radius: layer.getRadius()
-        };
-      } else if (layer instanceof L.Marker || layer instanceof L.CircleMarker) {
-        return this._uneditedLayerProps[id] = {
-          latlng: L.LatLngUtil.cloneLatLng(layer.getLatLng())
-        };
-      }
-    }
-  };
-
-  Cut.prototype._hasAvailableLayers = function() {
-    return this._featureGroup.getLayers().length !== 0;
-  };
+  function Cut(map, options) {}
 
   return Cut;
 
 })(L.Handler);
 
-L.Cut.include(L.Mixin.Events);
+
+/***/ }),
+/* 6 */,
+/* 7 */,
+/* 8 */,
+/* 9 */,
+/* 10 */,
+/* 11 */,
+/* 12 */,
+/* 13 */,
+/* 14 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var turf;
+
+turf = __webpack_require__(0);
+
+L.Polygon.include({
+  toTurfFeature: function() {
+    var coords, multi, ring0;
+    if (this.isEmpty() || !this._latlngs) {
+      return;
+    }
+    multi = !L.LineUtil.isFlat(this._latlngs[0]);
+    ring0 = multi ? this._latlngs[0][0] : this._latlngs[0];
+    coords = L.GeoJSON.latLngsToCoords(ring0, 0, true);
+    return turf.polygon([coords]);
+  }
+});
 
 
 /***/ }),
-/* 3 */
-/***/ (function(module, exports) {
-
-module.exports = _;
-
-/***/ }),
-/* 4 */
+/* 15 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var GeographicLib, L;
 
-L = __webpack_require__(0);
+L = __webpack_require__(2);
 
-GeographicLib = __webpack_require__(5);
+GeographicLib = __webpack_require__(16);
 
 L.GeographicUtil = L.extend(L.GeographicUtil || {}, {
   geod: GeographicLib.Geodesic.WGS84,
@@ -338,7 +717,7 @@ L.GeographicUtil.Polygon.prototype = {
 
 
 /***/ }),
-/* 5 */
+/* 16 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*
@@ -3428,7 +3807,7 @@ cb(GeographicLib);
 
 
 /***/ }),
-/* 6 */
+/* 17 */
 /***/ (function(module, exports) {
 
 // removed by extract-text-webpack-plugin

@@ -1,6 +1,7 @@
 # Leaflet.Draw.Cut
 
 This plugin extends Leaflet.Draw to provide cut capabilities.
+It takes advantage of RTree spatial index if available.
 
 Works with Leaflet 1.2.0 and Leaflet.Draw 0.4.12
 

@@ -26,6 +26,8 @@
     "webpack": "^3.6.0"
   },
   "dependencies": {
+    "@turf/difference": "^4.7.4",
+    "@turf/intersect": "^4.7.4",
     "geographiclib": "^1.49.0",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.12",
