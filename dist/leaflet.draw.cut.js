@@ -612,6 +612,219 @@ module.exports = {
 
 /***/ }),
 /* 1 */
+/***/ (function(module, exports) {
+
+/**
+ * Unwrap a coordinate from a Point Feature, Geometry or a single coordinate.
+ *
+ * @name getCoord
+ * @param {Array<number>|Geometry<Point>|Feature<Point>} obj Object
+ * @returns {Array<number>} coordinates
+ * @example
+ * var pt = turf.point([10, 10]);
+ *
+ * var coord = turf.getCoord(pt);
+ * //= [10, 10]
+ */
+function getCoord(obj) {
+    if (!obj) throw new Error('obj is required');
+
+    var coordinates = getCoords(obj);
+
+    // getCoord() must contain at least two numbers (Point)
+    if (coordinates.length > 1 &&
+        typeof coordinates[0] === 'number' &&
+        typeof coordinates[1] === 'number') {
+        return coordinates;
+    } else {
+        throw new Error('Coordinate is not a valid Point');
+    }
+}
+
+/**
+ * Unwrap coordinates from a Feature, Geometry Object or an Array of numbers
+ *
+ * @name getCoords
+ * @param {Array<number>|Geometry|Feature} obj Object
+ * @returns {Array<number>} coordinates
+ * @example
+ * var poly = turf.polygon([[[119.32, -8.7], [119.55, -8.69], [119.51, -8.54], [119.32, -8.7]]]);
+ *
+ * var coord = turf.getCoords(poly);
+ * //= [[[119.32, -8.7], [119.55, -8.69], [119.51, -8.54], [119.32, -8.7]]]
+ */
+function getCoords(obj) {
+    if (!obj) throw new Error('obj is required');
+    var coordinates;
+
+    // Array of numbers
+    if (obj.length) {
+        coordinates = obj;
+
+    // Geometry Object
+    } else if (obj.coordinates) {
+        coordinates = obj.coordinates;
+
+    // Feature
+    } else if (obj.geometry && obj.geometry.coordinates) {
+        coordinates = obj.geometry.coordinates;
+    }
+    // Checks if coordinates contains a number
+    if (coordinates) {
+        containsNumber(coordinates);
+        return coordinates;
+    }
+    throw new Error('No valid coordinates');
+}
+
+/**
+ * Checks if coordinates contains a number
+ *
+ * @name containsNumber
+ * @param {Array<any>} coordinates GeoJSON Coordinates
+ * @returns {boolean} true if Array contains a number
+ */
+function containsNumber(coordinates) {
+    if (coordinates.length > 1 &&
+        typeof coordinates[0] === 'number' &&
+        typeof coordinates[1] === 'number') {
+        return true;
+    }
+
+    if (Array.isArray(coordinates[0]) && coordinates[0].length) {
+        return containsNumber(coordinates[0]);
+    }
+    throw new Error('coordinates must only contain numbers');
+}
+
+/**
+ * Enforce expectations about types of GeoJSON objects for Turf.
+ *
+ * @name geojsonType
+ * @param {GeoJSON} value any GeoJSON object
+ * @param {string} type expected GeoJSON type
+ * @param {string} name name of calling function
+ * @throws {Error} if value is not the expected type.
+ */
+function geojsonType(value, type, name) {
+    if (!type || !name) throw new Error('type and name required');
+
+    if (!value || value.type !== type) {
+        throw new Error('Invalid input to ' + name + ': must be a ' + type + ', given ' + value.type);
+    }
+}
+
+/**
+ * Enforce expectations about types of {@link Feature} inputs for Turf.
+ * Internally this uses {@link geojsonType} to judge geometry types.
+ *
+ * @name featureOf
+ * @param {Feature} feature a feature with an expected geometry type
+ * @param {string} type expected GeoJSON type
+ * @param {string} name name of calling function
+ * @throws {Error} error if value is not the expected type.
+ */
+function featureOf(feature, type, name) {
+    if (!feature) throw new Error('No feature passed');
+    if (!name) throw new Error('.featureOf() requires a name');
+    if (!feature || feature.type !== 'Feature' || !feature.geometry) {
+        throw new Error('Invalid input to ' + name + ', Feature with geometry required');
+    }
+    if (!feature.geometry || feature.geometry.type !== type) {
+        throw new Error('Invalid input to ' + name + ': must be a ' + type + ', given ' + feature.geometry.type);
+    }
+}
+
+/**
+ * Enforce expectations about types of {@link FeatureCollection} inputs for Turf.
+ * Internally this uses {@link geojsonType} to judge geometry types.
+ *
+ * @name collectionOf
+ * @param {FeatureCollection} featureCollection a FeatureCollection for which features will be judged
+ * @param {string} type expected GeoJSON type
+ * @param {string} name name of calling function
+ * @throws {Error} if value is not the expected type.
+ */
+function collectionOf(featureCollection, type, name) {
+    if (!featureCollection) throw new Error('No featureCollection passed');
+    if (!name) throw new Error('.collectionOf() requires a name');
+    if (!featureCollection || featureCollection.type !== 'FeatureCollection') {
+        throw new Error('Invalid input to ' + name + ', FeatureCollection required');
+    }
+    for (var i = 0; i < featureCollection.features.length; i++) {
+        var feature = featureCollection.features[i];
+        if (!feature || feature.type !== 'Feature' || !feature.geometry) {
+            throw new Error('Invalid input to ' + name + ', Feature with geometry required');
+        }
+        if (!feature.geometry || feature.geometry.type !== type) {
+            throw new Error('Invalid input to ' + name + ': must be a ' + type + ', given ' + feature.geometry.type);
+        }
+    }
+}
+
+/**
+ * Get Geometry from Feature or Geometry Object
+ *
+ * @param {Feature|Geometry} geojson GeoJSON Feature or Geometry Object
+ * @returns {Geometry|null} GeoJSON Geometry Object
+ * @throws {Error} if geojson is not a Feature or Geometry Object
+ * @example
+ * var point = {
+ *   "type": "Feature",
+ *   "properties": {},
+ *   "geometry": {
+ *     "type": "Point",
+ *     "coordinates": [110, 40]
+ *   }
+ * }
+ * var geom = turf.getGeom(point)
+ * //={"type": "Point", "coordinates": [110, 40]}
+ */
+function getGeom(geojson) {
+    if (!geojson) throw new Error('geojson is required');
+    if (geojson.geometry !== undefined) return geojson.geometry;
+    if (geojson.coordinates || geojson.geometries) return geojson;
+    throw new Error('geojson must be a valid Feature or Geometry Object');
+}
+
+/**
+ * Get Geometry Type from Feature or Geometry Object
+ *
+ * @param {Feature|Geometry} geojson GeoJSON Feature or Geometry Object
+ * @returns {string} GeoJSON Geometry Type
+ * @throws {Error} if geojson is not a Feature or Geometry Object
+ * @example
+ * var point = {
+ *   "type": "Feature",
+ *   "properties": {},
+ *   "geometry": {
+ *     "type": "Point",
+ *     "coordinates": [110, 40]
+ *   }
+ * }
+ * var geom = turf.getGeomType(point)
+ * //="Point"
+ */
+function getGeomType(geojson) {
+    if (!geojson) throw new Error('geojson is required');
+    var geom = getGeom(geojson);
+    if (geom) return geom.type;
+}
+
+module.exports = {
+    geojsonType: geojsonType,
+    collectionOf: collectionOf,
+    featureOf: featureOf,
+    getCoord: getCoord,
+    getCoords: getCoords,
+    containsNumber: containsNumber,
+    getGeom: getGeom,
+    getGeomType: getGeomType
+};
+
+
+/***/ }),
+/* 2 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1612,219 +1825,6 @@ function lineReduce(geojson, callback, initialValue) {
 
 
 /***/ }),
-/* 2 */
-/***/ (function(module, exports) {
-
-/**
- * Unwrap a coordinate from a Point Feature, Geometry or a single coordinate.
- *
- * @name getCoord
- * @param {Array<number>|Geometry<Point>|Feature<Point>} obj Object
- * @returns {Array<number>} coordinates
- * @example
- * var pt = turf.point([10, 10]);
- *
- * var coord = turf.getCoord(pt);
- * //= [10, 10]
- */
-function getCoord(obj) {
-    if (!obj) throw new Error('obj is required');
-
-    var coordinates = getCoords(obj);
-
-    // getCoord() must contain at least two numbers (Point)
-    if (coordinates.length > 1 &&
-        typeof coordinates[0] === 'number' &&
-        typeof coordinates[1] === 'number') {
-        return coordinates;
-    } else {
-        throw new Error('Coordinate is not a valid Point');
-    }
-}
-
-/**
- * Unwrap coordinates from a Feature, Geometry Object or an Array of numbers
- *
- * @name getCoords
- * @param {Array<number>|Geometry|Feature} obj Object
- * @returns {Array<number>} coordinates
- * @example
- * var poly = turf.polygon([[[119.32, -8.7], [119.55, -8.69], [119.51, -8.54], [119.32, -8.7]]]);
- *
- * var coord = turf.getCoords(poly);
- * //= [[[119.32, -8.7], [119.55, -8.69], [119.51, -8.54], [119.32, -8.7]]]
- */
-function getCoords(obj) {
-    if (!obj) throw new Error('obj is required');
-    var coordinates;
-
-    // Array of numbers
-    if (obj.length) {
-        coordinates = obj;
-
-    // Geometry Object
-    } else if (obj.coordinates) {
-        coordinates = obj.coordinates;
-
-    // Feature
-    } else if (obj.geometry && obj.geometry.coordinates) {
-        coordinates = obj.geometry.coordinates;
-    }
-    // Checks if coordinates contains a number
-    if (coordinates) {
-        containsNumber(coordinates);
-        return coordinates;
-    }
-    throw new Error('No valid coordinates');
-}
-
-/**
- * Checks if coordinates contains a number
- *
- * @name containsNumber
- * @param {Array<any>} coordinates GeoJSON Coordinates
- * @returns {boolean} true if Array contains a number
- */
-function containsNumber(coordinates) {
-    if (coordinates.length > 1 &&
-        typeof coordinates[0] === 'number' &&
-        typeof coordinates[1] === 'number') {
-        return true;
-    }
-
-    if (Array.isArray(coordinates[0]) && coordinates[0].length) {
-        return containsNumber(coordinates[0]);
-    }
-    throw new Error('coordinates must only contain numbers');
-}
-
-/**
- * Enforce expectations about types of GeoJSON objects for Turf.
- *
- * @name geojsonType
- * @param {GeoJSON} value any GeoJSON object
- * @param {string} type expected GeoJSON type
- * @param {string} name name of calling function
- * @throws {Error} if value is not the expected type.
- */
-function geojsonType(value, type, name) {
-    if (!type || !name) throw new Error('type and name required');
-
-    if (!value || value.type !== type) {
-        throw new Error('Invalid input to ' + name + ': must be a ' + type + ', given ' + value.type);
-    }
-}
-
-/**
- * Enforce expectations about types of {@link Feature} inputs for Turf.
- * Internally this uses {@link geojsonType} to judge geometry types.
- *
- * @name featureOf
- * @param {Feature} feature a feature with an expected geometry type
- * @param {string} type expected GeoJSON type
- * @param {string} name name of calling function
- * @throws {Error} error if value is not the expected type.
- */
-function featureOf(feature, type, name) {
-    if (!feature) throw new Error('No feature passed');
-    if (!name) throw new Error('.featureOf() requires a name');
-    if (!feature || feature.type !== 'Feature' || !feature.geometry) {
-        throw new Error('Invalid input to ' + name + ', Feature with geometry required');
-    }
-    if (!feature.geometry || feature.geometry.type !== type) {
-        throw new Error('Invalid input to ' + name + ': must be a ' + type + ', given ' + feature.geometry.type);
-    }
-}
-
-/**
- * Enforce expectations about types of {@link FeatureCollection} inputs for Turf.
- * Internally this uses {@link geojsonType} to judge geometry types.
- *
- * @name collectionOf
- * @param {FeatureCollection} featureCollection a FeatureCollection for which features will be judged
- * @param {string} type expected GeoJSON type
- * @param {string} name name of calling function
- * @throws {Error} if value is not the expected type.
- */
-function collectionOf(featureCollection, type, name) {
-    if (!featureCollection) throw new Error('No featureCollection passed');
-    if (!name) throw new Error('.collectionOf() requires a name');
-    if (!featureCollection || featureCollection.type !== 'FeatureCollection') {
-        throw new Error('Invalid input to ' + name + ', FeatureCollection required');
-    }
-    for (var i = 0; i < featureCollection.features.length; i++) {
-        var feature = featureCollection.features[i];
-        if (!feature || feature.type !== 'Feature' || !feature.geometry) {
-            throw new Error('Invalid input to ' + name + ', Feature with geometry required');
-        }
-        if (!feature.geometry || feature.geometry.type !== type) {
-            throw new Error('Invalid input to ' + name + ': must be a ' + type + ', given ' + feature.geometry.type);
-        }
-    }
-}
-
-/**
- * Get Geometry from Feature or Geometry Object
- *
- * @param {Feature|Geometry} geojson GeoJSON Feature or Geometry Object
- * @returns {Geometry|null} GeoJSON Geometry Object
- * @throws {Error} if geojson is not a Feature or Geometry Object
- * @example
- * var point = {
- *   "type": "Feature",
- *   "properties": {},
- *   "geometry": {
- *     "type": "Point",
- *     "coordinates": [110, 40]
- *   }
- * }
- * var geom = turf.getGeom(point)
- * //={"type": "Point", "coordinates": [110, 40]}
- */
-function getGeom(geojson) {
-    if (!geojson) throw new Error('geojson is required');
-    if (geojson.geometry !== undefined) return geojson.geometry;
-    if (geojson.coordinates || geojson.geometries) return geojson;
-    throw new Error('geojson must be a valid Feature or Geometry Object');
-}
-
-/**
- * Get Geometry Type from Feature or Geometry Object
- *
- * @param {Feature|Geometry} geojson GeoJSON Feature or Geometry Object
- * @returns {string} GeoJSON Geometry Type
- * @throws {Error} if geojson is not a Feature or Geometry Object
- * @example
- * var point = {
- *   "type": "Feature",
- *   "properties": {},
- *   "geometry": {
- *     "type": "Point",
- *     "coordinates": [110, 40]
- *   }
- * }
- * var geom = turf.getGeomType(point)
- * //="Point"
- */
-function getGeomType(geojson) {
-    if (!geojson) throw new Error('geojson is required');
-    var geom = getGeom(geojson);
-    if (geom) return geom.type;
-}
-
-module.exports = {
-    geojsonType: geojsonType,
-    collectionOf: collectionOf,
-    featureOf: featureOf,
-    getCoord: getCoord,
-    getCoords: getCoords,
-    containsNumber: containsNumber,
-    getGeom: getGeom,
-    getGeomType: getGeomType
-};
-
-
-/***/ }),
 /* 3 */
 /***/ (function(module, exports) {
 
@@ -1859,7 +1859,7 @@ return v>0},Rs.isInCircleDDSlow=function(t,e,n,i){var r=_.valueOf(i.x),s=_.value
 /* 5 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var coordEach = __webpack_require__(1).coordEach;
+var coordEach = __webpack_require__(2).coordEach;
 
 /**
  * Takes input features and flips all of their coordinates from `[x, y]` to `[y, x]`.
@@ -1899,9 +1899,9 @@ module.exports = function (geojson, mutate) {
 
 __webpack_require__(7);
 __webpack_require__(8);
-__webpack_require__(30);
-__webpack_require__(31);
-module.exports = __webpack_require__(33);
+__webpack_require__(32);
+__webpack_require__(33);
+module.exports = __webpack_require__(35);
 
 
 /***/ }),
@@ -1927,7 +1927,7 @@ L.Cut = (function(superClass) {
 /* 8 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var L, _, turf, turfDifference, turfFlip, turfIntersect, turfLineSlice, turfRewind, turfinside,
+var L, _, pointOnLine, turf, turfDifference, turfFlip, turfIntersect, turfLineSlice, turfRewind, turfinside,
   extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
   hasProp = {}.hasOwnProperty;
 
@@ -1948,6 +1948,10 @@ turfFlip = __webpack_require__(5);
 turfRewind = __webpack_require__(26);
 
 turfinside = __webpack_require__(28);
+
+pointOnLine = __webpack_require__(30);
+
+__webpack_require__(31);
 
 L.Cutting = {};
 
@@ -1995,13 +1999,14 @@ L.Cut.Polyline = (function(superClass) {
     Polyline.__super__.enable.apply(this, arguments);
     this._availableLayers.on('layeradd', this._enableLayer, this);
     this._availableLayers.on('layerremove', this._disableLayer, this);
-    this._map.on(L.Cutting.Polyline.Event.SELECT, this._startCutDrawing, this);
+    this._map.on(L.Cutting.Polyline.Event.SELECT, this._cut, this);
     this._map.on('zoomend moveend', (function(_this) {
       return function() {
         return _this.refreshAvailableLayers();
       };
     })(this));
-    return this._map.on('mousemove', this._onMouseMove, this);
+    this._map.on('mousemove', this._selectLayer, this);
+    return this._map.on('mousemove', this._cut, this);
   };
 
   Polyline.prototype.disable = function() {
@@ -2015,7 +2020,6 @@ L.Cut.Polyline = (function(superClass) {
       handler: this.type
     });
     this._map.off(L.Cutting.Polyline.Event.SELECT, this._startCutDrawing, this);
-    this._map.off(L.Cutting.Polyline.Event.UNSELECT, this._stopCutDrawing, this);
     this._map.off(L.Draw.Event.CREATED, this._stopCutDrawing, this);
     this.fire('disabled', {
       handler: this.type
@@ -2134,7 +2138,7 @@ L.Cut.Polyline = (function(superClass) {
     return layer.setStyle(layer.options.disabled);
   };
 
-  Polyline.prototype._onMouseMove = function(e) {
+  Polyline.prototype._selectLayer = function(e) {
     var i, layer, len, mouseLatLng, mousePoint, polygon, ref;
     mouseLatLng = e.latlng;
     ref = this._availableLayers.getLayers();
@@ -2144,7 +2148,7 @@ L.Cut.Polyline = (function(superClass) {
       polygon = layer.toTurfFeature();
       if (turfinside["default"](mousePoint, polygon)) {
         if (layer !== this._activeLayer) {
-          this._activate(layer);
+          this._activate(layer, mouseLatLng);
         }
         return;
       }
@@ -2176,7 +2180,7 @@ L.Cut.Polyline = (function(superClass) {
     return delete layer.options.original;
   };
 
-  Polyline.prototype._activate = function(e) {
+  Polyline.prototype._activate = function(e, latlng) {
     var layer;
     layer = e.target || e.layer || e;
     if (!layer.selected) {
@@ -2188,7 +2192,8 @@ L.Cut.Polyline = (function(superClass) {
       }
       this._activeLayer = layer;
       return this._map.fire(L.Cutting.Polyline.Event.SELECT, {
-        layer: this._activeLayer
+        layer: this._activeLayer,
+        event: latlng
       });
     } else {
       layer.selected = false;
@@ -2200,11 +2205,21 @@ L.Cut.Polyline = (function(superClass) {
     }
   };
 
-  Polyline.prototype._startCutDrawing = function(e) {
-    var pathOptions;
+  Polyline.prototype._cut = function(e) {
+    var closestLatLng, mouseLatLng, mousePoint, onLine, pathOptions, ring0;
+    if (!this._activeLayer) {
+      return;
+    }
+    mouseLatLng = e.event || e.latlng;
+    mousePoint = mouseLatLng.toTurfFeature();
+    if (!this._startPoint) {
+      closestLatLng = L.GeometryUtil.closestLayerSnap(this._map, [this._activeLayer], mouseLatLng, 10).latlng;
+      L.marker([closestLatLng.lat, closestLatLng.lng]).addTo(this._map);
+      mousePoint = L.latLng([closestLatLng.lat, closestLatLng.lng]).toTurfFeature();
+      ring0 = this._activeLayer.outerRingAsTurfLineString();
+      onLine = pointOnLine(mousePoint, ring0);
+    }
     this._map.on(L.Draw.Event.CREATED, this._stopCutDrawing, this);
-    this._activeLayer.cutting = new L.Draw.Polyline(this._map);
-    console.error(this._activeLayer.cutting);
     if (this.options.cuttingPathOptions) {
       pathOptions = L.Util.extend({}, this.options.cuttingPathOptions);
       if (pathOptions.maintainColor) {
@@ -2213,7 +2228,6 @@ L.Cut.Polyline = (function(superClass) {
       }
       this._activeLayer.options.cutting = pathOptions;
     }
-    this._activeLayer.cutting.enable();
     return this._map.on(L.Draw.Event.DRAWVERTEX, this._finishDrawing, this);
   };
 
@@ -2356,7 +2370,7 @@ module.exports = function (poly1, poly2) {
 /* 11 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var coordEach = __webpack_require__(1).coordEach;
+var coordEach = __webpack_require__(2).coordEach;
 
 /**
  * Takes a GeoJSON Feature or FeatureCollection and truncates the precision of the geometry.
@@ -2430,8 +2444,8 @@ function truncate(coords, factor, coordinates) {
 var jsts = __webpack_require__(4);
 var area = __webpack_require__(13);
 var feature = __webpack_require__(0).feature;
-var getGeom = __webpack_require__(2).getGeom;
-var flattenEach = __webpack_require__(1).flattenEach;
+var getGeom = __webpack_require__(1).getGeom;
+var flattenEach = __webpack_require__(2).flattenEach;
 
 /**
  * Finds the difference between two {@link Polygon|polygons} by clipping the second polygon from the first.
@@ -2517,7 +2531,7 @@ function removeEmptyPolygon(geom) {
 /***/ (function(module, exports, __webpack_require__) {
 
 var area = __webpack_require__(14).geometry;
-var geomReduce = __webpack_require__(1).geomReduce;
+var geomReduce = __webpack_require__(2).geomReduce;
 
 /**
  * Takes one or more features and returns their area in square meters.
@@ -2711,11 +2725,11 @@ module.exports = function lineSlice(startPt, stopPt, line) {
 /* 17 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var meta = __webpack_require__(1);
+var meta = __webpack_require__(2);
 var helpers = __webpack_require__(0);
 var bearing = __webpack_require__(18);
 var distance = __webpack_require__(19);
-var invariant = __webpack_require__(2);
+var invariant = __webpack_require__(1);
 var destination = __webpack_require__(20);
 var lineIntersects = __webpack_require__(21);
 var point = helpers.point;
@@ -2813,7 +2827,7 @@ module.exports = function (lines, pt, units) {
 /* 18 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var getCoord = __webpack_require__(2).getCoord;
+var getCoord = __webpack_require__(1).getCoord;
 //http://en.wikipedia.org/wiki/Haversine_formula
 //http://www.movable-type.co.uk/scripts/latlong.html
 
@@ -2880,7 +2894,7 @@ module.exports = bearing;
 /* 19 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var getCoord = __webpack_require__(2).getCoord;
+var getCoord = __webpack_require__(1).getCoord;
 var radiansToDistance = __webpack_require__(0).radiansToDistance;
 //http://en.wikipedia.org/wiki/Haversine_formula
 //http://www.movable-type.co.uk/scripts/latlong.html
@@ -2929,7 +2943,7 @@ module.exports = function (from, to, units) {
 
 //http://en.wikipedia.org/wiki/Haversine_formula
 //http://www.movable-type.co.uk/scripts/latlong.html
-var getCoord = __webpack_require__(2).getCoord;
+var getCoord = __webpack_require__(1).getCoord;
 var helpers = __webpack_require__(0);
 var point = helpers.point;
 var distanceToRadians = helpers.distanceToRadians;
@@ -2979,10 +2993,10 @@ module.exports = function (origin, distance, bearing, units) {
 /* 21 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var meta = __webpack_require__(1);
+var meta = __webpack_require__(2);
 var rbush = __webpack_require__(22);
 var helpers = __webpack_require__(0);
-var getCoords = __webpack_require__(2).getCoords;
+var getCoords = __webpack_require__(1).getCoords;
 var lineSegment = __webpack_require__(25);
 var point = helpers.point;
 var featureEach = meta.featureEach;
@@ -3094,7 +3108,7 @@ function intersects(line1, line2) {
 /***/ (function(module, exports, __webpack_require__) {
 
 var rbush = __webpack_require__(23);
-var meta = __webpack_require__(1);
+var meta = __webpack_require__(2);
 var featureEach = meta.featureEach;
 var coordEach = meta.coordEach;
 
@@ -4048,8 +4062,8 @@ function defaultCompare(a, b) {
 /***/ (function(module, exports, __webpack_require__) {
 
 var helpers = __webpack_require__(0);
-var getCoords = __webpack_require__(2).getCoords;
-var flattenEach = __webpack_require__(1).flattenEach;
+var getCoords = __webpack_require__(1).getCoords;
+var flattenEach = __webpack_require__(2).flattenEach;
 var lineString = helpers.lineString;
 var featureCollection = helpers.featureCollection;
 
@@ -4147,8 +4161,8 @@ function bbox(coords1, coords2) {
 /* 26 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var meta = __webpack_require__(1);
-var getCoords = __webpack_require__(2).getCoords;
+var meta = __webpack_require__(2);
+var getCoords = __webpack_require__(1).getCoords;
 var booleanClockwise = __webpack_require__(27);
 var featureCollection = __webpack_require__(0).featureCollection;
 var geomEach = meta.geomEach;
@@ -4281,7 +4295,7 @@ function rewindPolygon(coords, reverse) {
 /* 27 */
 /***/ (function(module, exports, __webpack_require__) {
 
-var invariant = __webpack_require__(2);
+var invariant = __webpack_require__(1);
 var getCoords = invariant.getCoords;
 
 /**
@@ -4666,6 +4680,828 @@ function getType(geojson, name) {
 /* 30 */
 /***/ (function(module, exports, __webpack_require__) {
 
+var getCoords = __webpack_require__(1).getCoords;
+
+/**
+ * Returns true if a point is on a line. Accepts a optional parameter to ignore the start and end vertices of the linestring.
+ *
+ * @name booleanPointOnLine
+ * @param {Geometry|Feature<Point>} point GeoJSON Feature or Geometry
+ * @param {Geometry|Feature<LineString>} linestring GeoJSON Feature or Geometry
+ * @param {boolean} [ignoreEndVertices=false] whether to ignore the start and end vertices.
+ * @returns {boolean} true/false
+ * @example
+ * var pt = turf.point([0, 0]);
+ * var line = turf.lineString([[-1, -1],[1, 1],[1.5, 2.2]]);
+ * var isPointOnLine = turf.booleanPointOnLine(pt, line);
+ * //=true
+ */
+module.exports = function (point, linestring, ignoreEndVertices) {
+    var pointCoords = getCoords(point);
+    var lineCoords = getCoords(linestring);
+    for (var i = 0; i < lineCoords.length - 1; i++) {
+        var ignoreBoundary = false;
+        if (ignoreEndVertices) {
+            if (i === 0) ignoreBoundary = 'start';
+            if (i === lineCoords.length - 2) ignoreBoundary = 'end';
+            if (i === 0 && i + 1 === lineCoords.length - 1) ignoreBoundary = 'both';
+        }
+        if (isPointOnLineSegment(lineCoords[i], lineCoords[i + 1], pointCoords, ignoreBoundary)) return true;
+    }
+    return false;
+};
+
+// See http://stackoverflow.com/a/4833823/1979085
+/**
+ * @private
+ * @param {Array<number>} lineSegmentStart coord pair of start of line
+ * @param {Array<number>} lineSegmentEnd coord pair of end of line
+ * @param {Array<number>} point coord pair of point to check
+ * @param {boolean|string} excludeBoundary whether the point is allowed to fall on the line ends. If true which end to ignore.
+ * @returns {boolean} true/false
+ */
+function isPointOnLineSegment(lineSegmentStart, lineSegmentEnd, point, excludeBoundary) {
+    var dxc = point[0] - lineSegmentStart[0];
+    var dyc = point[1] - lineSegmentStart[1];
+    var dxl = lineSegmentEnd[0] - lineSegmentStart[0];
+    var dyl = lineSegmentEnd[1] - lineSegmentStart[1];
+    var cross = dxc * dyl - dyc * dxl;
+    if (cross !== 0) {
+        return false;
+    }
+    if (!excludeBoundary) {
+        if (Math.abs(dxl) >= Math.abs(dyl)) {
+            return dxl > 0 ? lineSegmentStart[0] <= point[0] && point[0] <= lineSegmentEnd[0] : lineSegmentEnd[0] <= point[0] && point[0] <= lineSegmentStart[0];
+        }
+        return dyl > 0 ? lineSegmentStart[1] <= point[1] && point[1] <= lineSegmentEnd[1] : lineSegmentEnd[1] <= point[1] && point[1] <= lineSegmentStart[1];
+    } else if (excludeBoundary === 'start') {
+        if (Math.abs(dxl) >= Math.abs(dyl)) {
+            return dxl > 0 ? lineSegmentStart[0] < point[0] && point[0] <= lineSegmentEnd[0] : lineSegmentEnd[0] <= point[0] && point[0] < lineSegmentStart[0];
+        }
+        return dyl > 0 ? lineSegmentStart[1] < point[1] && point[1] <= lineSegmentEnd[1] : lineSegmentEnd[1] <= point[1] && point[1] < lineSegmentStart[1];
+    } else if (excludeBoundary === 'end') {
+        if (Math.abs(dxl) >= Math.abs(dyl)) {
+            return dxl > 0 ? lineSegmentStart[0] <= point[0] && point[0] < lineSegmentEnd[0] : lineSegmentEnd[0] < point[0] && point[0] <= lineSegmentStart[0];
+        }
+        return dyl > 0 ? lineSegmentStart[1] <= point[1] && point[1] < lineSegmentEnd[1] : lineSegmentEnd[1] < point[1] && point[1] <= lineSegmentStart[1];
+    } else if (excludeBoundary === 'both') {
+        if (Math.abs(dxl) >= Math.abs(dyl)) {
+            return dxl > 0 ? lineSegmentStart[0] < point[0] && point[0] < lineSegmentEnd[0] : lineSegmentEnd[0] < point[0] && point[0] < lineSegmentStart[0];
+        }
+        return dyl > 0 ? lineSegmentStart[1] < point[1] && point[1] < lineSegmentEnd[1] : lineSegmentEnd[1] < point[1] && point[1] < lineSegmentStart[1];
+    }
+}
+
+
+/***/ }),
+/* 31 */
+/***/ (function(module, exports, __webpack_require__) {
+
+var __WEBPACK_AMD_DEFINE_FACTORY__, __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;// Packaging/modules magic dance.
+(function (factory) {
+    var L;
+    if (true) {
+        // AMD
+        !(__WEBPACK_AMD_DEFINE_ARRAY__ = [__webpack_require__(3)], __WEBPACK_AMD_DEFINE_FACTORY__ = (factory),
+				__WEBPACK_AMD_DEFINE_RESULT__ = (typeof __WEBPACK_AMD_DEFINE_FACTORY__ === 'function' ?
+				(__WEBPACK_AMD_DEFINE_FACTORY__.apply(exports, __WEBPACK_AMD_DEFINE_ARRAY__)) : __WEBPACK_AMD_DEFINE_FACTORY__),
+				__WEBPACK_AMD_DEFINE_RESULT__ !== undefined && (module.exports = __WEBPACK_AMD_DEFINE_RESULT__));
+    } else if (typeof module !== 'undefined') {
+        // Node/CommonJS
+        L = require('leaflet');
+        module.exports = factory(L);
+    } else {
+        // Browser globals
+        if (typeof window.L === 'undefined')
+            throw 'Leaflet must be loaded first';
+        factory(window.L);
+    }
+}(function (L) {
+"use strict";
+
+L.Polyline._flat = L.Polyline._flat || function (latlngs) {
+    // true if it's a flat array of latlngs; false if nested
+    return !L.Util.isArray(latlngs[0]) || (typeof latlngs[0][0] !== 'object' && typeof latlngs[0][0] !== 'undefined');
+};
+
+/**
+ * @fileOverview Leaflet Geometry utilities for distances and linear referencing.
+ * @name L.GeometryUtil
+ */
+
+L.GeometryUtil = L.extend(L.GeometryUtil || {}, {
+
+    /**
+        Shortcut function for planar distance between two {L.LatLng} at current zoom.
+
+        @tutorial distance-length
+
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {L.LatLng} latlngA geographical point A
+        @param {L.LatLng} latlngB geographical point B
+        @returns {Number} planar distance
+     */
+    distance: function (map, latlngA, latlngB) {
+        return map.latLngToLayerPoint(latlngA).distanceTo(map.latLngToLayerPoint(latlngB));
+    },
+
+    /**
+        Shortcut function for planar distance between a {L.LatLng} and a segment (A-B).
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {L.LatLng} latlng - The position to search
+        @param {L.LatLng} latlngA geographical point A of the segment
+        @param {L.LatLng} latlngB geographical point B of the segment
+        @returns {Number} planar distance
+    */
+    distanceSegment: function (map, latlng, latlngA, latlngB) {
+        var p = map.latLngToLayerPoint(latlng),
+           p1 = map.latLngToLayerPoint(latlngA),
+           p2 = map.latLngToLayerPoint(latlngB);
+        return L.LineUtil.pointToSegmentDistance(p, p1, p2);
+    },
+
+    /**
+        Shortcut function for converting distance to readable distance.
+        @param {Number} distance distance to be converted
+        @param {String} unit 'metric' or 'imperial'
+        @returns {String} in yard or miles
+    */
+    readableDistance: function (distance, unit) {
+        var isMetric = (unit !== 'imperial'),
+            distanceStr;
+        if (isMetric) {
+            // show metres when distance is < 1km, then show km
+            if (distance > 1000) {
+                distanceStr = (distance  / 1000).toFixed(2) + ' km';
+            }
+            else {
+                distanceStr = Math.ceil(distance) + ' m';
+            }
+        }
+        else {
+            distance *= 1.09361;
+            if (distance > 1760) {
+                distanceStr = (distance / 1760).toFixed(2) + ' miles';
+            }
+            else {
+                distanceStr = Math.ceil(distance) + ' yd';
+            }
+        }
+        return distanceStr;
+    },
+
+    /**
+        Returns true if the latlng belongs to segment A-B
+        @param {L.LatLng} latlng - The position to search
+        @param {L.LatLng} latlngA geographical point A of the segment
+        @param {L.LatLng} latlngB geographical point B of the segment
+        @param {?Number} [tolerance=0.2] tolerance to accept if latlng belongs really
+        @returns {boolean}
+     */
+    belongsSegment: function(latlng, latlngA, latlngB, tolerance) {
+        tolerance = tolerance === undefined ? 0.2 : tolerance;
+        var hypotenuse = latlngA.distanceTo(latlngB),
+            delta = latlngA.distanceTo(latlng) + latlng.distanceTo(latlngB) - hypotenuse;
+        return delta/hypotenuse < tolerance;
+    },
+
+    /**
+     * Returns total length of line
+     * @tutorial distance-length
+     *
+     * @param {L.Polyline|Array<L.Point>|Array<L.LatLng>} coords Set of coordinates
+     * @returns {Number} Total length (pixels for Point, meters for LatLng)
+     */
+    length: function (coords) {
+        var accumulated = L.GeometryUtil.accumulatedLengths(coords);
+        return accumulated.length > 0 ? accumulated[accumulated.length-1] : 0;
+    },
+
+    /**
+     * Returns a list of accumulated length along a line.
+     * @param {L.Polyline|Array<L.Point>|Array<L.LatLng>} coords Set of coordinates
+     * @returns {Array<Number>} Array of accumulated lengths (pixels for Point, meters for LatLng)
+     */
+    accumulatedLengths: function (coords) {
+        if (typeof coords.getLatLngs == 'function') {
+            coords = coords.getLatLngs();
+        }
+        if (coords.length === 0)
+            return [];
+        var total = 0,
+            lengths = [0];
+        for (var i = 0, n = coords.length - 1; i< n; i++) {
+            total += coords[i].distanceTo(coords[i+1]);
+            lengths.push(total);
+        }
+        return lengths;
+    },
+
+    /**
+        Returns the closest point of a {L.LatLng} on the segment (A-B)
+
+        @tutorial closest
+
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {L.LatLng} latlng - The position to search
+        @param {L.LatLng} latlngA geographical point A of the segment
+        @param {L.LatLng} latlngB geographical point B of the segment
+        @returns {L.LatLng} Closest geographical point
+    */
+    closestOnSegment: function (map, latlng, latlngA, latlngB) {
+        var maxzoom = map.getMaxZoom();
+        if (maxzoom === Infinity)
+            maxzoom = map.getZoom();
+        var p = map.project(latlng, maxzoom),
+           p1 = map.project(latlngA, maxzoom),
+           p2 = map.project(latlngB, maxzoom),
+           closest = L.LineUtil.closestPointOnSegment(p, p1, p2);
+        return map.unproject(closest, maxzoom);
+    },
+
+    /**
+        Returns the closest latlng on layer.
+
+        Accept nested arrays
+
+        @tutorial closest
+
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {Array<L.LatLng>|Array<Array<L.LatLng>>|L.PolyLine|L.Polygon} layer - Layer that contains the result
+        @param {L.LatLng} latlng - The position to search
+        @param {?boolean} [vertices=false] - Whether to restrict to path vertices.
+        @returns {L.LatLng} Closest geographical point or null if layer param is incorrect
+    */
+    closest: function (map, layer, latlng, vertices) {
+
+        var latlngs,
+            mindist = Infinity,
+            result = null,
+            i, n, distance;
+
+        if (layer instanceof Array) {
+            // if layer is Array<Array<T>>
+            if (layer[0] instanceof Array && typeof layer[0][0] !== 'number') {
+                // if we have nested arrays, we calc the closest for each array
+                // recursive
+                for (var i = 0; i < layer.length; i++) {
+                    var subResult = L.GeometryUtil.closest(map, layer[i], latlng, vertices);
+                    if (subResult.distance < mindist) {
+                        mindist = subResult.distance;
+                        result = subResult;
+                    }
+                }
+                return result;
+            } else if (layer[0] instanceof L.LatLng
+                        || typeof layer[0][0] === 'number'
+                        || typeof layer[0].lat === 'number') { // we could have a latlng as [x,y] with x & y numbers or {lat, lng}
+                layer = L.polyline(layer);
+            } else {
+                return result;
+            }
+        }
+
+        // if we don't have here a Polyline, that means layer is incorrect
+        // see https://github.com/makinacorpus/Leaflet.GeometryUtil/issues/23
+        if (! ( layer instanceof L.Polyline ) )
+            return result;
+
+        // deep copy of latlngs
+        latlngs = JSON.parse(JSON.stringify(layer.getLatLngs().slice(0)));
+
+        // add the last segment for L.Polygon
+        if (layer instanceof L.Polygon) {
+            // add the last segment for each child that is a nested array
+            var addLastSegment = function(latlngs) {
+                if (L.Polyline._flat(latlngs)) {
+                    latlngs.push(latlngs[0]);
+                } else {
+                    for (var i = 0; i < latlngs.length; i++) {
+                        addLastSegment(latlngs[i]);
+                    }
+                }
+            }
+            addLastSegment(latlngs);
+        }
+
+        // we have a multi polygon / multi polyline / polygon with holes
+        // use recursive to explore and return the good result
+        if ( ! L.Polyline._flat(latlngs) ) {
+
+            for (var i = 0; i < latlngs.length; i++) {
+                // if we are at the lower level, and if we have a L.Polygon, we add the last segment
+                var subResult = L.GeometryUtil.closest(map, latlngs[i], latlng, vertices);
+                if (subResult.distance < mindist) {
+                    mindist = subResult.distance;
+                    result = subResult;
+                }
+            }
+            return result;
+
+        } else {
+
+            // Lookup vertices
+            if (vertices) {
+                for(i = 0, n = latlngs.length; i < n; i++) {
+                    var ll = latlngs[i];
+                    distance = L.GeometryUtil.distance(map, latlng, ll);
+                    if (distance < mindist) {
+                        mindist = distance;
+                        result = ll;
+                        result.distance = distance;
+                    }
+                }
+                return result;
+            }
+
+            // Keep the closest point of all segments
+            for (i = 0, n = latlngs.length; i < n-1; i++) {
+                var latlngA = latlngs[i],
+                    latlngB = latlngs[i+1];
+                distance = L.GeometryUtil.distanceSegment(map, latlng, latlngA, latlngB);
+                if (distance <= mindist) {
+                    mindist = distance;
+                    result = L.GeometryUtil.closestOnSegment(map, latlng, latlngA, latlngB);
+                    result.distance = distance;
+                }
+            }
+            return result;
+        }
+
+    },
+
+    /**
+        Returns the closest layer to latlng among a list of layers.
+
+        @tutorial closest
+
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {Array<L.ILayer>} layers Set of layers
+        @param {L.LatLng} latlng - The position to search
+        @returns {object} ``{layer, latlng, distance}`` or ``null`` if list is empty;
+    */
+    closestLayer: function (map, layers, latlng) {
+        var mindist = Infinity,
+            result = null,
+            ll = null,
+            distance = Infinity;
+
+        for (var i = 0, n = layers.length; i < n; i++) {
+            var layer = layers[i];
+            if (layer instanceof L.LayerGroup) {
+                // recursive
+                var subResult = L.GeometryUtil.closestLayer(map, layer.getLayers(), latlng);
+                if (subResult.distance < mindist) {
+                    mindist = subResult.distance;
+                    result = subResult;
+                }
+            } else {
+                // Single dimension, snap on points, else snap on closest
+                if (typeof layer.getLatLng == 'function') {
+                    ll = layer.getLatLng();
+                    distance = L.GeometryUtil.distance(map, latlng, ll);
+                }
+                else {
+                    ll = L.GeometryUtil.closest(map, layer, latlng);
+                    if (ll) distance = ll.distance;  // Can return null if layer has no points.
+                }
+                if (distance < mindist) {
+                    mindist = distance;
+                    result = {layer: layer, latlng: ll, distance: distance};
+                }
+            }
+        }
+        return result;
+    },
+
+    /**
+        Returns the n closest layers to latlng among a list of input layers.
+
+        @param {L.Map} map - Leaflet map to be used for this method
+        @param {Array<L.ILayer>} layers - Set of layers
+        @param {L.LatLng} latlng - The position to search
+        @param {?Number} [n=layers.length] - the expected number of output layers.
+        @returns {Array<object>} an array of objects ``{layer, latlng, distance}`` or ``null`` if the input is invalid (empty list or negative n)
+    */
+    nClosestLayers: function (map, layers, latlng, n) {
+        n = typeof n === 'number' ? n : layers.length;
+
+        if (n < 1 || layers.length < 1) {
+            return null;
+        }
+
+        var results = [];
+        var distance, ll;
+
+        for (var i = 0, m = layers.length; i < m; i++) {
+            var layer = layers[i];
+            if (layer instanceof L.LayerGroup) {
+                // recursive
+                var subResult = L.GeometryUtil.closestLayer(map, layer.getLayers(), latlng);
+                results.push(subResult)
+            } else {
+                // Single dimension, snap on points, else snap on closest
+                if (typeof layer.getLatLng == 'function') {
+                    ll = layer.getLatLng();
+                    distance = L.GeometryUtil.distance(map, latlng, ll);
+                }
+                else {
+                    ll = L.GeometryUtil.closest(map, layer, latlng);
+                    if (ll) distance = ll.distance;  // Can return null if layer has no points.
+                }
+                results.push({layer: layer, latlng: ll, distance: distance})
+            }
+        }
+
+        results.sort(function(a, b) {
+            return a.distance - b.distance;
+        });
+
+        if (results.length > n) {
+            return results.slice(0, n);
+        } else  {
+            return results;
+        }
+    },
+
+    /**
+     * Returns all layers within a radius of the given position, in an ascending order of distance.
+       @param {L.Map} map Leaflet map to be used for this method
+       @param {Array<ILayer>} layers - A list of layers.
+       @param {L.LatLng} latlng - The position to search
+       @param {?Number} [radius=Infinity] - Search radius in pixels
+       @return {object[]} an array of objects including layer within the radius, closest latlng, and distance
+     */
+    layersWithin: function(map, layers, latlng, radius) {
+      radius = typeof radius == 'number' ? radius : Infinity;
+
+      var results = [];
+      var ll = null;
+      var distance = 0;
+
+      for (var i = 0, n = layers.length; i < n; i++) {
+        var layer = layers[i];
+
+        if (typeof layer.getLatLng == 'function') {
+            ll = layer.getLatLng();
+            distance = L.GeometryUtil.distance(map, latlng, ll);
+        }
+        else {
+            ll = L.GeometryUtil.closest(map, layer, latlng);
+            if (ll) distance = ll.distance;  // Can return null if layer has no points.
+        }
+
+        if (ll && distance < radius) {
+            results.push({layer: layer, latlng: ll, distance: distance});
+        }
+      }
+
+      var sortedResults = results.sort(function(a, b) {
+          return a.distance - b.distance;
+      });
+
+      return sortedResults;
+    },
+
+    /**
+        Returns the closest position from specified {LatLng} among specified layers,
+        with a maximum tolerance in pixels, providing snapping behaviour.
+
+        @tutorial closest
+
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {Array<ILayer>} layers - A list of layers to snap on.
+        @param {L.LatLng} latlng - The position to snap
+        @param {?Number} [tolerance=Infinity] - Maximum number of pixels.
+        @param {?boolean} [withVertices=true] - Snap to layers vertices or segment points (not only vertex)
+        @returns {object} with snapped {LatLng} and snapped {Layer} or null if tolerance exceeded.
+    */
+    closestLayerSnap: function (map, layers, latlng, tolerance, withVertices) {
+        tolerance = typeof tolerance == 'number' ? tolerance : Infinity;
+        withVertices = typeof withVertices == 'boolean' ? withVertices : true;
+
+        var result = L.GeometryUtil.closestLayer(map, layers, latlng);
+        if (!result || result.distance > tolerance)
+            return null;
+
+        // If snapped layer is linear, try to snap on vertices (extremities and middle points)
+        if (withVertices && typeof result.layer.getLatLngs == 'function') {
+            var closest = L.GeometryUtil.closest(map, result.layer, result.latlng, true);
+            if (closest.distance < tolerance) {
+                result.latlng = closest;
+                result.distance = L.GeometryUtil.distance(map, closest, latlng);
+            }
+        }
+        return result;
+    },
+
+    /**
+        Returns the Point located on a segment at the specified ratio of the segment length.
+        @param {L.Point} pA coordinates of point A
+        @param {L.Point} pB coordinates of point B
+        @param {Number} the length ratio, expressed as a decimal between 0 and 1, inclusive.
+        @returns {L.Point} the interpolated point.
+    */
+    interpolateOnPointSegment: function (pA, pB, ratio) {
+        return L.point(
+            (pA.x * (1 - ratio)) + (ratio * pB.x),
+            (pA.y * (1 - ratio)) + (ratio * pB.y)
+        );
+    },
+
+    /**
+        Returns the coordinate of the point located on a line at the specified ratio of the line length.
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {Array<L.LatLng>|L.PolyLine} latlngs Set of geographical points
+        @param {Number} ratio the length ratio, expressed as a decimal between 0 and 1, inclusive
+        @returns {Object} an object with latLng ({LatLng}) and predecessor ({Number}), the index of the preceding vertex in the Polyline
+        (-1 if the interpolated point is the first vertex)
+    */
+    interpolateOnLine: function (map, latLngs, ratio) {
+        latLngs = (latLngs instanceof L.Polyline) ? latLngs.getLatLngs() : latLngs;
+        var n = latLngs.length;
+        if (n < 2) {
+            return null;
+        }
+
+        // ensure the ratio is between 0 and 1;
+        ratio = Math.max(Math.min(ratio, 1), 0);
+
+        if (ratio === 0) {
+            return {
+                latLng: latLngs[0] instanceof L.LatLng ? latLngs[0] : L.latLng(latLngs[0]),
+                predecessor: -1
+            };
+        }
+        if (ratio == 1) {
+            return {
+                latLng: latLngs[latLngs.length -1] instanceof L.LatLng ? latLngs[latLngs.length -1] : L.latLng(latLngs[latLngs.length -1]),
+                predecessor: latLngs.length - 2
+            };
+        }
+
+        // project the LatLngs as Points,
+        // and compute total planar length of the line at max precision
+        var maxzoom = map.getMaxZoom();
+        if (maxzoom === Infinity)
+            maxzoom = map.getZoom();
+        var pts = [];
+        var lineLength = 0;
+        for(var i = 0; i < n; i++) {
+            pts[i] = map.project(latLngs[i], maxzoom);
+            if(i > 0)
+              lineLength += pts[i-1].distanceTo(pts[i]);
+        }
+
+        var ratioDist = lineLength * ratio;
+        var a = pts[0],
+            b = pts[1],
+            distA = 0,
+            distB = a.distanceTo(b);
+        // follow the line segments [ab], adding lengths,
+        // until we find the segment where the points should lie on
+        var index = 1;
+        for (; index < n && distB < ratioDist; index++) {
+            a = b;
+            distA = distB;
+            b = pts[index];
+            distB += a.distanceTo(b);
+        }
+        // compute the ratio relative to the segment [ab]
+        var segmentRatio = ((distB - distA) !== 0) ? ((ratioDist - distA) / (distB - distA)) : 0;
+        var interpolatedPoint = L.GeometryUtil.interpolateOnPointSegment(a, b, segmentRatio);
+        return {
+            latLng: map.unproject(interpolatedPoint, maxzoom),
+            predecessor: index-2
+        };
+    },
+
+    /**
+        Returns a float between 0 and 1 representing the location of the
+        closest point on polyline to the given latlng, as a fraction of total line length.
+        (opposite of L.GeometryUtil.interpolateOnLine())
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {L.PolyLine} polyline Polyline on which the latlng will be search
+        @param {L.LatLng} latlng The position to search
+        @returns {Number} Float between 0 and 1
+    */
+    locateOnLine: function (map, polyline, latlng) {
+        var latlngs = polyline.getLatLngs();
+        if (latlng.equals(latlngs[0]))
+            return 0.0;
+        if (latlng.equals(latlngs[latlngs.length-1]))
+            return 1.0;
+
+        var point = L.GeometryUtil.closest(map, polyline, latlng, false),
+            lengths = L.GeometryUtil.accumulatedLengths(latlngs),
+            total_length = lengths[lengths.length-1],
+            portion = 0,
+            found = false;
+        for (var i=0, n = latlngs.length-1; i < n; i++) {
+            var l1 = latlngs[i],
+                l2 = latlngs[i+1];
+            portion = lengths[i];
+            if (L.GeometryUtil.belongsSegment(point, l1, l2)) {
+                portion += l1.distanceTo(point);
+                found = true;
+                break;
+            }
+        }
+        if (!found) {
+            throw "Could not interpolate " + latlng.toString() + " within " + polyline.toString();
+        }
+        return portion / total_length;
+    },
+
+    /**
+        Returns a clone with reversed coordinates.
+        @param {L.PolyLine} polyline polyline to reverse
+        @returns {L.PolyLine} polyline reversed
+    */
+    reverse: function (polyline) {
+        return L.polyline(polyline.getLatLngs().slice(0).reverse());
+    },
+
+    /**
+        Returns a sub-part of the polyline, from start to end.
+        If start is superior to end, returns extraction from inverted line.
+        @param {L.Map} map Leaflet map to be used for this method
+        @param {L.PolyLine} polyline Polyline on which will be extracted the sub-part
+        @param {Number} start ratio, expressed as a decimal between 0 and 1, inclusive
+        @param {Number} end ratio, expressed as a decimal between 0 and 1, inclusive
+        @returns {Array<L.LatLng>} new polyline
+     */
+    extract: function (map, polyline, start, end) {
+        if (start > end) {
+            return L.GeometryUtil.extract(map, L.GeometryUtil.reverse(polyline), 1.0-start, 1.0-end);
+        }
+
+        // Bound start and end to [0-1]
+        start = Math.max(Math.min(start, 1), 0);
+        end = Math.max(Math.min(end, 1), 0);
+
+        var latlngs = polyline.getLatLngs(),
+            startpoint = L.GeometryUtil.interpolateOnLine(map, polyline, start),
+            endpoint = L.GeometryUtil.interpolateOnLine(map, polyline, end);
+        // Return single point if start == end
+        if (start == end) {
+            var point = L.GeometryUtil.interpolateOnLine(map, polyline, end);
+            return [point.latLng];
+        }
+        // Array.slice() works indexes at 0
+        if (startpoint.predecessor == -1)
+            startpoint.predecessor = 0;
+        if (endpoint.predecessor == -1)
+            endpoint.predecessor = 0;
+        var result = latlngs.slice(startpoint.predecessor+1, endpoint.predecessor+1);
+        result.unshift(startpoint.latLng);
+        result.push(endpoint.latLng);
+        return result;
+    },
+
+    /**
+        Returns true if first polyline ends where other second starts.
+        @param {L.PolyLine} polyline First polyline
+        @param {L.PolyLine} other Second polyline
+        @returns {bool}
+    */
+    isBefore: function (polyline, other) {
+        if (!other) return false;
+        var lla = polyline.getLatLngs(),
+            llb = other.getLatLngs();
+        return (lla[lla.length-1]).equals(llb[0]);
+    },
+
+    /**
+        Returns true if first polyline starts where second ends.
+        @param {L.PolyLine} polyline First polyline
+        @param {L.PolyLine} other Second polyline
+        @returns {bool}
+    */
+    isAfter: function (polyline, other) {
+        if (!other) return false;
+        var lla = polyline.getLatLngs(),
+            llb = other.getLatLngs();
+        return (lla[0]).equals(llb[llb.length-1]);
+    },
+
+    /**
+        Returns true if first polyline starts where second ends or start.
+        @param {L.PolyLine} polyline First polyline
+        @param {L.PolyLine} other Second polyline
+        @returns {bool}
+    */
+    startsAtExtremity: function (polyline, other) {
+        if (!other) return false;
+        var lla = polyline.getLatLngs(),
+            llb = other.getLatLngs(),
+            start = lla[0];
+        return start.equals(llb[0]) || start.equals(llb[llb.length-1]);
+    },
+
+    /**
+        Returns horizontal angle in degres between two points.
+        @param {L.Point} a Coordinates of point A
+        @param {L.Point} b Coordinates of point B
+        @returns {Number} horizontal angle
+     */
+    computeAngle: function(a, b) {
+        return (Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI);
+    },
+
+    /**
+       Returns slope (Ax+B) between two points.
+        @param {L.Point} a Coordinates of point A
+        @param {L.Point} b Coordinates of point B
+        @returns {Object} with ``a`` and ``b`` properties.
+     */
+    computeSlope: function(a, b) {
+        var s = (b.y - a.y) / (b.x - a.x),
+            o = a.y - (s * a.x);
+        return {'a': s, 'b': o};
+    },
+
+    /**
+       Returns LatLng of rotated point around specified LatLng center.
+        @param {L.LatLng} latlngPoint: point to rotate
+        @param {double} angleDeg: angle to rotate in degrees
+        @param {L.LatLng} latlngCenter: center of rotation
+        @returns {L.LatLng} rotated point
+     */
+    rotatePoint: function(map, latlngPoint, angleDeg, latlngCenter) {
+        var maxzoom = map.getMaxZoom();
+        if (maxzoom === Infinity)
+            maxzoom = map.getZoom();
+        var angleRad = angleDeg*Math.PI/180,
+            pPoint = map.project(latlngPoint, maxzoom),
+            pCenter = map.project(latlngCenter, maxzoom),
+            x2 = Math.cos(angleRad)*(pPoint.x-pCenter.x) - Math.sin(angleRad)*(pPoint.y-pCenter.y) + pCenter.x,
+            y2 = Math.sin(angleRad)*(pPoint.x-pCenter.x) + Math.cos(angleRad)*(pPoint.y-pCenter.y) + pCenter.y;
+        return map.unproject(new L.Point(x2,y2), maxzoom);
+    },
+
+    /**
+       Returns the bearing in degrees clockwise from north (0 degrees)
+       from the first L.LatLng to the second, at the first LatLng
+       @param {L.LatLng} latlng1: origin point of the bearing
+       @param {L.LatLng} latlng2: destination point of the bearing
+       @returns {float} degrees clockwise from north.
+    */
+    bearing: function(latlng1, latlng2) {
+        var rad = Math.PI / 180,
+            lat1 = latlng1.lat * rad,
+            lat2 = latlng2.lat * rad,
+            lon1 = latlng1.lng * rad,
+            lon2 = latlng2.lng * rad,
+            y = Math.sin(lon2 - lon1) * Math.cos(lat2),
+            x = Math.cos(lat1) * Math.sin(lat2) -
+                Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+
+        var bearing = ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+        return bearing >= 180 ? bearing-360 : bearing;
+    },
+
+    /**
+       Returns the point that is a distance and heading away from
+       the given origin point.
+       @param {L.LatLng} latlng: origin point
+       @param {float}: heading in degrees, clockwise from 0 degrees north.
+       @param {float}: distance in meters
+       @returns {L.latLng} the destination point.
+       Many thanks to Chris Veness at http://www.movable-type.co.uk/scripts/latlong.html
+       for a great reference and examples.
+    */
+    destination: function(latlng, heading, distance) {
+        heading = (heading + 360) % 360;
+        var rad = Math.PI / 180,
+            radInv = 180 / Math.PI,
+            R = 6378137, // approximation of Earth's radius
+            lon1 = latlng.lng * rad,
+            lat1 = latlng.lat * rad,
+            rheading = heading * rad,
+            sinLat1 = Math.sin(lat1),
+            cosLat1 = Math.cos(lat1),
+            cosDistR = Math.cos(distance / R),
+            sinDistR = Math.sin(distance / R),
+            lat2 = Math.asin(sinLat1 * cosDistR + cosLat1 *
+                sinDistR * Math.cos(rheading)),
+            lon2 = lon1 + Math.atan2(Math.sin(rheading) * sinDistR *
+                cosLat1, cosDistR - sinLat1 * Math.sin(lat2));
+        lon2 = lon2 * radInv;
+        lon2 = lon2 > 180 ? lon2 - 360 : lon2 < -180 ? lon2 + 360 : lon2;
+        return L.latLng([lat2 * radInv, lon2]);
+    }
+});
+
+return L.GeometryUtil;
+
+}));
+
+
+/***/ }),
+/* 32 */
+/***/ (function(module, exports, __webpack_require__) {
+
 var turf, turfFlip;
 
 turf = __webpack_require__(0);
@@ -4727,14 +5563,14 @@ L.Polyline.include({
 
 
 /***/ }),
-/* 31 */
+/* 33 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var GeographicLib, L;
 
 L = __webpack_require__(3);
 
-GeographicLib = __webpack_require__(32);
+GeographicLib = __webpack_require__(34);
 
 L.GeographicUtil = L.extend(L.GeographicUtil || {}, {
   geod: GeographicLib.Geodesic.WGS84,
@@ -4766,7 +5602,7 @@ L.GeographicUtil.Polygon.prototype = {
 
 
 /***/ }),
-/* 32 */
+/* 34 */
 /***/ (function(module, exports, __webpack_require__) {
 
 var __WEBPACK_AMD_DEFINE_ARRAY__, __WEBPACK_AMD_DEFINE_RESULT__;/*
@@ -7856,7 +8692,7 @@ cb(GeographicLib);
 
 
 /***/ }),
-/* 33 */
+/* 35 */
 /***/ (function(module, exports) {
 
 // removed by extract-text-webpack-plugin

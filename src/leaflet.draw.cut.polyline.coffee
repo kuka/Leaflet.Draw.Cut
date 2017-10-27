@@ -8,6 +8,8 @@ turfLineSlice = require '@turf/line-slice'
 turfFlip = require '@turf/flip'
 turfRewind = require '@turf/rewind'
 turfinside = require '@turf/inside'
+pointOnLine = require '@turf/boolean-point-on-line'
+require 'leaflet-geometryutil'
 
 L.Cutting = {}
 L.Cutting.Polyline = {}
@@ -50,12 +52,14 @@ class L.Cut.Polyline extends L.Handler
     @_availableLayers.on 'layeradd', @_enableLayer, @
     @_availableLayers.on 'layerremove', @_disableLayer, @
 
-    @_map.on L.Cutting.Polyline.Event.SELECT, @_startCutDrawing, @
+    @_map.on L.Cutting.Polyline.Event.SELECT, @_cut, @
 
     @_map.on 'zoomend moveend', () =>
       @refreshAvailableLayers()
 
-    @_map.on 'mousemove', @_onMouseMove, @
+    @_map.on 'mousemove', @_selectLayer, @
+    @_map.on 'mousemove', @_cut, @
+
 
     # @_map.on L.Cutting.Polyline.Event.UNSELECT, @_cancelCutDrawing, @
     # @_map.on L.Draw.Event.DRAWSTART, @_stopCutDrawing, @
@@ -72,7 +76,7 @@ class L.Cut.Polyline extends L.Handler
     @_map.fire L.Cutting.Polyline.Event.STOP, handler: @type
 
     @_map.off L.Cutting.Polyline.Event.SELECT, @_startCutDrawing, @
-    @_map.off L.Cutting.Polyline.Event.UNSELECT, @_stopCutDrawing, @
+    # @_map.off L.Cutting.Polyline.Event.UNSELECT, @_stopCutDrawing, @
     @_map.off L.Draw.Event.CREATED, @_stopCutDrawing, @
 
 
@@ -182,7 +186,7 @@ class L.Cut.Polyline extends L.Handler
 
     layer.setStyle layer.options.disabled
 
-  _onMouseMove: (e) ->
+  _selectLayer: (e) ->
     mouseLatLng = e.latlng
 
     for layer in @_availableLayers.getLayers()
@@ -191,7 +195,7 @@ class L.Cut.Polyline extends L.Handler
 
       if turfinside.default(mousePoint, polygon)
         if layer != @_activeLayer
-          @_activate layer
+          @_activate layer, mouseLatLng
         return
 
     if @_activeLayer
@@ -215,7 +219,7 @@ class L.Cut.Polyline extends L.Handler
     delete layer.options.selected
     delete layer.options.original
 
-  _activate: (e) ->
+  _activate: (e, latlng) ->
     layer = e.target || e.layer || e
 
     if !layer.selected
@@ -228,22 +232,43 @@ class L.Cut.Polyline extends L.Handler
 
       @_activeLayer = layer
 
-      @_map.fire L.Cutting.Polyline.Event.SELECT, layer: @_activeLayer
+      @_map.fire L.Cutting.Polyline.Event.SELECT, layer: @_activeLayer, event: latlng
     else
       layer.selected = false
       layer.setStyle(layer.options.disabled)
       @_activeLayer = null
       @_map.fire L.Cutting.Polyline.Event.UNSELECT, layer: layer
 
-  _startCutDrawing: (e) ->
+  _cut: (e) ->
+    return unless @_activeLayer
+    mouseLatLng = e.event || e.latlng
+    mousePoint = mouseLatLng.toTurfFeature()
+
+    # console.error mousePoint
+    # mousePoint = e.event.toTurfFeature()
+
+    # firstPoint, snapped
+    if !@_startPoint
+
+      #TMP
+      closestLatLng = L.GeometryUtil.closestLayerSnap(@_map, [@_activeLayer], mouseLatLng, 10).latlng
+      # console.error closestLatLng
+      L.marker([closestLatLng.lat, closestLatLng.lng]).addTo @_map
+      mousePoint = L.latLng([closestLatLng.lat, closestLatLng.lng]).toTurfFeature()
+      # console.error mousePoint
+
+      ring0 = @_activeLayer.outerRingAsTurfLineString()
+      onLine = pointOnLine(mousePoint, ring0)
+      # console.error 'on the line', onLine
+      # console.error closestLatLng, onLine, ring0
     # @_backupLayer @_activeLayer
 
     # @_map.on L.Draw.Event.DRAWSTART, @_stopCutDrawing, @
 
     @_map.on L.Draw.Event.CREATED, @_stopCutDrawing, @
 
-    @_activeLayer.cutting = new L.Draw.Polyline(@_map)
-    console.error @_activeLayer.cutting
+    # @_activeLayer.cutting = new L.Draw.Polyline(@_map)
+    # console.error @_activeLayer.cutting
 
     if @options.cuttingPathOptions
       pathOptions = L.Util.extend {}, @options.cuttingPathOptions
@@ -256,7 +281,7 @@ class L.Cut.Polyline extends L.Handler
       # layer.options.original = L.extend {}, layer.options
       @_activeLayer.options.cutting = pathOptions
 
-    @_activeLayer.cutting.enable()
+    # @_activeLayer.cutting.enable()
 
     #TMP
     @_map.on L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
