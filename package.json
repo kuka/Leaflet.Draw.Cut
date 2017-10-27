@@ -26,8 +26,13 @@
     "webpack": "^3.6.0"
   },
   "dependencies": {
+    "@turf/boolean-point-on-line": "^4.7.3",
     "@turf/difference": "^4.7.4",
+    "@turf/flip": "^4.7.3",
+    "@turf/inside": "^5.0.0",
     "@turf/intersect": "^4.7.4",
+    "@turf/line-slice": "^4.7.3",
+    "@turf/rewind": "^4.7.3",
     "geographiclib": "^1.49.0",
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.12",
