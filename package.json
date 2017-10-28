@@ -26,7 +26,6 @@
     "webpack": "^3.6.0"
   },
   "dependencies": {
-    "@turf/boolean-point-on-line": "^4.7.3",
     "@turf/difference": "^4.7.4",
     "@turf/flip": "^4.7.3",
     "@turf/inside": "^5.0.0",

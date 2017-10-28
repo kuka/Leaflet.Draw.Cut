@@ -8,7 +8,6 @@ turfLineSlice = require '@turf/line-slice'
 turfFlip = require '@turf/flip'
 turfRewind = require '@turf/rewind'
 turfinside = require '@turf/inside'
-pointOnLine = require '@turf/boolean-point-on-line'
 require 'leaflet-geometryutil'
 
 L.Cutting = {}
@@ -156,7 +155,6 @@ class L.Cut.Polyline extends L.Handler
     # @_map.removeLayer(@_activeLayer._poly)
     delete @_activeLayer._poly
     delete @_activeLayer
-    console.error @_featureGroup
     return
 
   _enableLayer: (e) ->
@@ -187,6 +185,7 @@ class L.Cut.Polyline extends L.Handler
     layer.setStyle layer.options.disabled
 
   _selectLayer: (e) ->
+    layer = e.target || e.layer || e
     mouseLatLng = e.latlng
 
     for layer in @_availableLayers.getLayers()
@@ -206,6 +205,11 @@ class L.Cut.Polyline extends L.Handler
     layer.selected = false
     if @options.selectedPathOptions
       layer.setStyle layer.options.disabled
+
+    if @_activeLayer.cutting
+      @_activeLayer.cutting.disable()
+      delete @_activeLayer.cutting
+
     @_activeLayer = null
 
   _disableLayer: (e) ->
@@ -221,6 +225,7 @@ class L.Cut.Polyline extends L.Handler
 
   _activate: (e, latlng) ->
     layer = e.target || e.layer || e
+    console.error layer
 
     if !layer.selected
       layer.selected = true
@@ -232,10 +237,14 @@ class L.Cut.Polyline extends L.Handler
 
       @_activeLayer = layer
 
-      @_map.fire L.Cutting.Polyline.Event.SELECT, layer: @_activeLayer, event: latlng
+      @_map.fire L.Cutting.Polyline.Event.SELECT, layer: @_activeLayer, latlng: latlng
     else
       layer.selected = false
       layer.setStyle(layer.options.disabled)
+
+      @_activeLayer.cutting.disable()
+      delete @_activeLayer.cutting
+
       @_activeLayer = null
       @_map.fire L.Cutting.Polyline.Event.UNSELECT, layer: layer
 
@@ -244,47 +253,57 @@ class L.Cut.Polyline extends L.Handler
     mouseLatLng = e.event || e.latlng
     mousePoint = mouseLatLng.toTurfFeature()
 
+    console.error 'cutting'
+
+    if !@_activeLayer.cutting
+      @_activeLayer.cutting = new L.Draw.Polyline(@_map)
+      if @options.cuttingPathOptions
+        pathOptions = L.Util.extend {}, @options.cuttingPathOptions
+
+        # Use the existing color of the layer
+        if pathOptions.maintainColor
+          pathOptions.color = layer.options.color
+          pathOptions.fillColor = layer.options.fillColor
+
+        # layer.options.original = L.extend {}, layer.options
+        @_activeLayer.options.cutting = pathOptions
+
+
+      @_activeLayer.cutting.enable()
+
+
     # console.error mousePoint
     # mousePoint = e.event.toTurfFeature()
 
     # firstPoint, snapped
-    if !@_startPoint
+    # if !@_startPoint
 
       #TMP
-      closestLatLng = L.GeometryUtil.closestLayerSnap(@_map, [@_activeLayer], mouseLatLng, 10).latlng
+      # closestLatLng = L.GeometryUtil.closestLayerSnap(@_map, [@_activeLayer], mouseLatLng, 10)
+      # if closestLatLng
+        # closestLatLng = closestLatLng.latlng
+        # console.error closestLatLng
       # console.error closestLatLng
-      L.marker([closestLatLng.lat, closestLatLng.lng]).addTo @_map
-      mousePoint = L.latLng([closestLatLng.lat, closestLatLng.lng]).toTurfFeature()
+        # mousePoint = L.latLng([closestLatLng.lat, closestLatLng.lng]).toTurfFeature()
       # console.error mousePoint
 
-      ring0 = @_activeLayer.outerRingAsTurfLineString()
-      onLine = pointOnLine(mousePoint, ring0)
       # console.error 'on the line', onLine
       # console.error closestLatLng, onLine, ring0
     # @_backupLayer @_activeLayer
 
     # @_map.on L.Draw.Event.DRAWSTART, @_stopCutDrawing, @
 
-    @_map.on L.Draw.Event.CREATED, @_stopCutDrawing, @
+    # @_map.on L.Draw.Event.CREATED, @_stopCutDrawing, @
 
     # @_activeLayer.cutting = new L.Draw.Polyline(@_map)
     # console.error @_activeLayer.cutting
 
-    if @options.cuttingPathOptions
-      pathOptions = L.Util.extend {}, @options.cuttingPathOptions
 
-      # Use the existing color of the layer
-      if pathOptions.maintainColor
-        pathOptions.color = layer.options.color
-        pathOptions.fillColor = layer.options.fillColor
-
-      # layer.options.original = L.extend {}, layer.options
-      @_activeLayer.options.cutting = pathOptions
 
     # @_activeLayer.cutting.enable()
 
     #TMP
-    @_map.on L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
+    # @_map.on L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
 
 
   _finishDrawing: (e) ->
