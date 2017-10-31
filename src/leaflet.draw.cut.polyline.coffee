@@ -8,6 +8,8 @@ turfLineSlice = require '@turf/line-slice'
 turfFlip = require '@turf/flip'
 turfRewind = require '@turf/rewind'
 turfinside = require '@turf/inside'
+turfMeta = require '@turf/meta'
+turfInvariant = require '@turf/invariant'
 require 'leaflet-geometryutil'
 
 L.Cutting = {}
@@ -129,11 +131,12 @@ class L.Cut.Polyline extends L.Handler
 
     polygon1 = layer1.toTurfFeature()
     polygon2 = layer2.toTurfFeature()
+
     difference = turfDifference(polygon1, polygon2)
 
     L.geoJSON difference,
       style: () ->
-        fillColor: 'blue', opacity: 1, fillOpacity: 1
+        fillColor: '#3f51b5', opacity: 1, fillOpacity: 1, color: 'black', weight: 2
 
 
   removeHooks: ->
@@ -185,9 +188,8 @@ class L.Cut.Polyline extends L.Handler
     layer.setStyle layer.options.disabled
 
   _selectLayer: (e) ->
-    layer = e.target || e.layer || e
+    # layer = e.target || e.layer || e
     mouseLatLng = e.latlng
-
     for layer in @_availableLayers.getLayers()
       mousePoint = mouseLatLng.toTurfFeature()
       polygon = layer.toTurfFeature()
@@ -197,7 +199,7 @@ class L.Cut.Polyline extends L.Handler
           @_activate layer, mouseLatLng
         return
 
-    if @_activeLayer
+    if @_activeLayer && !@_activeLayer.glue
       @_unselectLayer @_activeLayer
 
   _unselectLayer: (e) ->
@@ -206,9 +208,11 @@ class L.Cut.Polyline extends L.Handler
     if @options.selectedPathOptions
       layer.setStyle layer.options.disabled
 
-    if @_activeLayer.cutting
-      @_activeLayer.cutting.disable()
-      delete @_activeLayer.cutting
+    if layer.cutting
+      layer.cutting.disable()
+      delete layer.cutting
+
+    @_map.on 'mousemove', @_selectLayer, @
 
     @_activeLayer = null
 
@@ -225,15 +229,13 @@ class L.Cut.Polyline extends L.Handler
 
   _activate: (e, latlng) ->
     layer = e.target || e.layer || e
-    console.error layer
 
     if !layer.selected
       layer.selected = true
       layer.setStyle layer.options.selected
 
       if @_activeLayer
-        @_activeLayer.selected = false
-        @_activeLayer.setStyle @_activeLayer.options.disabled
+        @_unselectLayer @_activeLayer
 
       @_activeLayer = layer
 
@@ -253,10 +255,11 @@ class L.Cut.Polyline extends L.Handler
     mouseLatLng = e.event || e.latlng
     mousePoint = mouseLatLng.toTurfFeature()
 
-    console.error 'cutting'
-
     if !@_activeLayer.cutting
       @_activeLayer.cutting = new L.Draw.Polyline(@_map)
+
+      @_activeLayer.cutting.setOptions(_.merge(@options.snap, guideLayers: [@_activeLayer]))
+
       if @options.cuttingPathOptions
         pathOptions = L.Util.extend {}, @options.cuttingPathOptions
 
@@ -268,120 +271,176 @@ class L.Cut.Polyline extends L.Handler
         # layer.options.original = L.extend {}, layer.options
         @_activeLayer.options.cutting = pathOptions
 
-
       @_activeLayer.cutting.enable()
 
-
-    # console.error mousePoint
-    # mousePoint = e.event.toTurfFeature()
-
     # firstPoint, snapped
-    # if !@_startPoint
+    if !@_startPoint
+      @_activeLayer.cutting._mouseMarker.on 'move', @glueMarker, @
+      @_activeLayer.cutting._mouseMarker.on 'snap', @_glue_on_enabled, @
 
-      #TMP
-      # closestLatLng = L.GeometryUtil.closestLayerSnap(@_map, [@_activeLayer], mouseLatLng, 10)
-      # if closestLatLng
-        # closestLatLng = closestLatLng.latlng
-        # console.error closestLatLng
-      # console.error closestLatLng
-        # mousePoint = L.latLng([closestLatLng.lat, closestLatLng.lng]).toTurfFeature()
-      # console.error mousePoint
+  glueMarker: (e) =>
+    closest = L.GeometryUtil.closest(@_map, @_activeLayer, e.latlng, false)
+    @_activeLayer.cutting._mouseMarker._latlng = L.latLng(closest.lat, closest.lng)
+    @_activeLayer.cutting._mouseMarker.update()
 
-      # console.error 'on the line', onLine
-      # console.error closestLatLng, onLine, ring0
-    # @_backupLayer @_activeLayer
+  _glue_on_enabled: =>
+    @_activeLayer.glue = true
 
-    # @_map.on L.Draw.Event.DRAWSTART, @_stopCutDrawing, @
+    @_activeLayer.cutting._snapper.unwatchMarker(@_activeLayer.cutting._mouseMarker)
 
-    # @_map.on L.Draw.Event.CREATED, @_stopCutDrawing, @
+    @_map.on 'click', @_glue_on_click, @
 
-    # @_activeLayer.cutting = new L.Draw.Polyline(@_map)
-    # console.error @_activeLayer.cutting
+  _glue_on_click: =>
 
+    if @_activeLayer.cutting._markers
+      markerCount = @_activeLayer.cutting._markers.length
+      marker = @_activeLayer.cutting._markers[markerCount - 1]
 
+      if markerCount == 1
+        @_activeLayer.cutting._snapper.addOrigin(@_activeLayer.cutting._markers[0])
+        L.DomUtil.addClass @_activeLayer.cutting._markers[0]._icon, 'marker-origin'
 
-    # @_activeLayer.cutting.enable()
+      if marker
+        L.DomUtil.addClass marker._icon, 'marker-snapped'
 
-    #TMP
-    # @_map.on L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
+        marker.setLatLng(@_activeLayer.cutting._mouseMarker._latlng)
+        poly = @_activeLayer.cutting._poly
+        latlngs = poly.getLatLngs()
+        latlngs.splice(-1, 1)
+        @_activeLayer.cutting._poly.setLatLngs(latlngs)
+        @_activeLayer.cutting._poly.addLatLng(@_activeLayer.cutting._mouseMarker._latlng)
+
+        snapPoint = @_map.latLngToLayerPoint marker._latlng
+        @_activeLayer.cutting._updateGuide snapPoint
+
+        @_activeLayer.setStyle(@_activeLayer.options.cutting)
+
+        @_activeLayer.glue = false
+
+        @_map.off 'mousemove', @_selectLayer, @
+
+        @_startPoint = marker
+
+        @_activeLayer.cutting._mouseMarker.off 'move', @glueMarker, @
+        @_map.off 'click', @_glue_on_click, @
+        @_activeLayer.cutting._snapper.watchMarker(@_activeLayer.cutting._mouseMarker)
+
+        @_activeLayer.cutting._mouseMarker.off 'snap', @_glue_on_enabled, @
+
+        @_activeLayer.cutting._mouseMarker.on 'snap', (e) =>
+          console.error 'snap'
+          @_map.on 'click', @_finishDrawing, @
+
+        @_activeLayer.cutting._mouseMarker.on 'unsnap', (e) =>
+          console.error 'unsnap'
+          @_map.off 'click', @_finishDrawing, @
 
 
   _finishDrawing: (e) ->
-    console.error e
+    console.error 'finish'
 
-    if(e.layers.getLayers().length >=3)
-      # @_map.fire L.Draw.Event.CREATED, @
-      @_activeLayer.cutting.completeShape()
-      # e.layers._fireCreatedEvent()
+    @_stopCutDrawing()
 
-  _stopCutDrawing: (e) ->
-    @_map.off L.Draw.Event.CREATED, @_stopCutDrawing, @
+  _stopCutDrawing: () ->
+
+    drawnPolyline = @_activeLayer.cutting._poly
 
     activeLineString = @_activeLayer.outerRingAsTurfLineString()
 
-    [firstPoint, ..., lastPoint] = e.layer.getLatLngs()
+    [firstPoint, ..., lastPoint] = drawnPolyline.getLatLngs()
     slicedLineString = turfLineSlice(firstPoint.toTurfFeature(), lastPoint.toTurfFeature(), activeLineString)
+
+    # clean duplicate points
+    coords = []
+    turfMeta.coordEach slicedLineString, (current, index) ->
+      unless index > 0 and coords[..].pop() == current
+        coords.push current
+
+    slicedLineString = turf.lineString coords
+
     rewindSlicedLineString = turfRewind(slicedLineString, true)
+
     slicedPolyline = new L.Polyline []
     slicedPolyline.fromTurfFeature(rewindSlicedLineString)
+    # slicedPolyline.addTo @_map
 
-    cuttingLineString = e.layer.toTurfFeature()
+    cuttingLineString = drawnPolyline.toTurfFeature()
     rewindCuttingLineString = turfRewind(cuttingLineString)
     cuttingPolyline = new L.Polyline []
     cuttingPolyline.fromTurfFeature(rewindCuttingLineString)
+    # cuttingPolyline.addTo @_map
 
-    ## tmp
-    slFirstPoint = slicedPolyline.getLatLngs()[0]
-    slLastPoint = slicedPolyline.getLatLngs()[slicedPolyline.getLatLngs().length - 1]
+    slicedPolyline.merge cuttingPolyline
 
-    fakePolyLine = new L.Polyline([slFirstPoint, cuttingPolyline.getLatLngs()[1], slLastPoint])
+    @_activeLayer.cutting.disable()
 
-    slicedPolyline.merge fakePolyLine
-    #####
+    slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), fillColor: '#009688', fillOpacity: 1, opacity: 1, weight: 2, color: 'black')
 
-    slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), color: 'yellow', Opacity: 1, fillOpacity: 1)
+    remainingPolygon = @_difference(@_activeLayer, slicedPolygon)
 
-    poly1 = slicedPolygon
-    poly2 = @_difference(@_activeLayer, poly1)
-
+    @_map.removeLayer @_activeLayer
     slicedPolygon.addTo @_map
-    poly2.addTo @_map
+    remainingPolygon.addTo @_map
 
     @_activeLayer._polys = []
-    @_activeLayer._polys.push poly1
-    @_activeLayer._polys.push poly2
+    @_activeLayer._polys.push slicedPolygon
+    @_activeLayer._polys.push remainingPolygon
 
+    editPoly = new L.Edit.Poly cuttingPolyline
+    editPoly._poly.options.editing = {color: '#fe57a1', dashArray: '10, 10'}
+
+    editPoly._poly.on 'editdrag', @_moveMarker, @
+
+    editPoly._poly.addTo(@_map)
+    editPoly.enable()
+
+    @_map.off 'click', @_finishDrawing, @
 
   _moveMarker: (e) ->
-    cuttingShape = e.target || e.layer
-    console.error 'move', e
 
-    console.error @_featureGroup
+    drawnPolyline = e.target
 
-    if @_featureGroup.search is "function"
-      closestLayers = @_featureGroup.search cuttingShape.getBounds()
-    else
-      closestLayers = @_featureGroup.getLayers()
+    activeLineString = @_activeLayer.outerRingAsTurfLineString()
 
-    for closestLayer in closestLayers
-      intersectShape = @_intersect closestLayer, cuttingShape
+    [firstPoint, ..., lastPoint] = drawnPolyline.getLatLngs()
+    slicedLineString = turfLineSlice(firstPoint.toTurfFeature(), lastPoint.toTurfFeature(), activeLineString)
 
-      @_map.removeLayer(closestLayer._poly)
-      closestLayer._poly = @_difference closestLayer, intersectShape
-      closestLayer._poly.addTo @_map
+    # clean duplicate points
+    coords = []
+    turfMeta.coordEach slicedLineString, (current, index) ->
+      unless index > 0 and coords[..].pop() == current
+        coords.push current
 
-    #
-    # shape = @_intersect(layer)
-    #
-    # @_map.removeLayer(@_activeLayer._poly)
-    #
-    # @_activeLayer._poly = @_difference(shape)
-    # @_activeLayer._poly.addTo(@_map)
+    slicedLineString = turf.lineString coords
 
-    # shape.addTo @_map
-    # @_map.fitBounds(shape.getBounds())
-  #
-  #
+    rewindSlicedLineString = turfRewind(slicedLineString, true)
+
+    slicedPolyline = new L.Polyline []
+    slicedPolyline.fromTurfFeature(rewindSlicedLineString)
+    # slicedPolyline.addTo @_map
+
+    cuttingLineString = drawnPolyline.toTurfFeature()
+    rewindCuttingLineString = turfRewind(cuttingLineString)
+    cuttingPolyline = new L.Polyline []
+    cuttingPolyline.fromTurfFeature(rewindCuttingLineString)
+    # cuttingPolyline.addTo @_map
+
+    slicedPolyline.merge cuttingPolyline
+
+    @_activeLayer.cutting.disable()
+
+    slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), fillColor: '#009688', fillOpacity: 1, opacity: 1, weight: 2, color: 'black')
+
+    remainingPolygon = @_difference(@_activeLayer, slicedPolygon)
+
+    @_map.removeLayer @_activeLayer
+    slicedPolygon.addTo @_map
+    remainingPolygon.addTo @_map
+
+    @_activeLayer._polys = []
+    @_activeLayer._polys.push slicedPolygon
+    @_activeLayer._polys.push remainingPolygon
+
   # _backupLayer: (layer) ->
   #   id = L.Util.stamp(layer)
   #

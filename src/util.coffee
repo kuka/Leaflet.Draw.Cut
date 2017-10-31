@@ -32,7 +32,7 @@ L.LatLng::toTurfFeature = ->
 
 L.Polyline.include
   merge: (polyline) ->
-    latLngs = polyline.getLatLngs().reverse()
+    latLngs = polyline.getLatLngs()
     return unless latLngs.length
 
     for latLng in latLngs
