@@ -78,7 +78,7 @@ class L.Cut.Polyline extends L.Handler
 
     @_map.off L.Cutting.Polyline.Event.SELECT, @_startCutDrawing, @
     # @_map.off L.Cutting.Polyline.Event.UNSELECT, @_stopCutDrawing, @
-    @_map.off L.Draw.Event.CREATED, @_stopCutDrawing, @
+    # @_map.off L.Draw.Event.CREATED, @_stopCutDrawing, @
 
 
     @fire 'disabled', handler: @type
@@ -279,9 +279,11 @@ class L.Cut.Polyline extends L.Handler
       @_activeLayer.cutting._mouseMarker.on 'snap', @_glue_on_enabled, @
 
   glueMarker: (e) =>
+    console.error e.target
+    marker = e.target || @_activeLayer.cutting._mouseMarker
     closest = L.GeometryUtil.closest(@_map, @_activeLayer, e.latlng, false)
-    @_activeLayer.cutting._mouseMarker._latlng = L.latLng(closest.lat, closest.lng)
-    @_activeLayer.cutting._mouseMarker.update()
+    marker._latlng = L.latLng(closest.lat, closest.lng)
+    marker.update()
 
   _glue_on_enabled: =>
     @_activeLayer.glue = true
@@ -389,16 +391,24 @@ class L.Cut.Polyline extends L.Handler
     editPoly = new L.Edit.Poly cuttingPolyline
     editPoly._poly.options.editing = {color: '#fe57a1', dashArray: '10, 10'}
 
-    editPoly._poly.on 'editdrag', @_moveMarker, @
+    # editPoly._poly.on 'editdrag', @_moveMarker, @
 
     editPoly._poly.addTo(@_map)
     editPoly.enable()
+
+    console.error editPoly._verticesHandlers[0]._markers[0]
+
+    for marker in editPoly._verticesHandlers[0]._markers
+      continue if L.stamp(marker) == L.stamp(editPoly._verticesHandlers[0]._markers[0]) || L.stamp(marker) == L.stamp(editPoly._verticesHandlers[0]._markers[..].pop())
+      marker.on 'move', @glueMarker, @
 
     @_map.off 'click', @_finishDrawing, @
 
   _moveMarker: (e) ->
 
     drawnPolyline = e.target
+
+    # return if L.stamp(e.marker) == L.stamp(drawnPolyline._verticesHandlers[0]._markers[0]) || L.stamp(e.marker) == L.stamp(drawnPolyline._verticesHandlers[0]._markers[..].pop())
 
     activeLineString = @_activeLayer.outerRingAsTurfLineString()
 
