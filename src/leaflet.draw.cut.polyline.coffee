@@ -19,6 +19,7 @@ L.Cutting.Polyline.Event.START = "cut:polyline:start"
 L.Cutting.Polyline.Event.STOP = "cut:polyline:stop"
 L.Cutting.Polyline.Event.SELECT = "cut:polyline:select"
 L.Cutting.Polyline.Event.UNSELECT = "cut:polyline:unselect"
+L.Cutting.Polyline.Event.CREATED = "cut:polyline:created"
 # L.Cutting.Polyline.Event.SELECTED = "layerSelection:selected"
 
 class L.Cut.Polyline extends L.Handler
@@ -279,7 +280,7 @@ class L.Cut.Polyline extends L.Handler
       @_activeLayer.cutting._mouseMarker.on 'snap', @_glue_on_enabled, @
 
   glueMarker: (e) =>
-    console.error e.target
+    # console.error e.target
     marker = e.target || @_activeLayer.cutting._mouseMarker
     closest = L.GeometryUtil.closest(@_map, @_activeLayer, e.latlng, false)
     marker._latlng = L.latLng(closest.lat, closest.lng)
@@ -387,6 +388,8 @@ class L.Cut.Polyline extends L.Handler
     @_activeLayer._polys = []
     @_activeLayer._polys.push slicedPolygon
     @_activeLayer._polys.push remainingPolygon
+
+    @_map.fire L.Cutting.Polyline.Event.CREATED, layers: [slicedPolygon, remainingPolygon]
 
     editPoly = new L.Edit.Poly cuttingPolyline
     editPoly._poly.options.editing = {color: '#fe57a1', dashArray: '10, 10'}
