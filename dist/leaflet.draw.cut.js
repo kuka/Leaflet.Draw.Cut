@@ -1152,9 +1152,8 @@ L.Cut.Polyline = (function(superClass) {
     for (i = 0, len = ref1.length; i < len; i++) {
       marker = ref1[i];
       if (L.stamp(marker) === L.stamp(editPoly._verticesHandlers[0]._markers[0]) || L.stamp(marker) === L.stamp(editPoly._verticesHandlers[0]._markers.slice(0).pop())) {
-        continue;
+        marker.on('move', this.glueMarker, this);
       }
-      marker.on('move', this.glueMarker, this);
     }
     return this._map.off('click', this._finishDrawing, this);
   };

@@ -410,8 +410,8 @@ class L.Cut.Polyline extends L.Handler
     console.error editPoly._verticesHandlers[0]._markers[0]
 
     for marker in editPoly._verticesHandlers[0]._markers
-      continue if L.stamp(marker) == L.stamp(editPoly._verticesHandlers[0]._markers[0]) || L.stamp(marker) == L.stamp(editPoly._verticesHandlers[0]._markers[..].pop())
-      marker.on 'move', @glueMarker, @
+      if L.stamp(marker) == L.stamp(editPoly._verticesHandlers[0]._markers[0]) || L.stamp(marker) == L.stamp(editPoly._verticesHandlers[0]._markers[..].pop())
+        marker.on 'move', @glueMarker, @
 
     @_map.off 'click', @_finishDrawing, @
 
