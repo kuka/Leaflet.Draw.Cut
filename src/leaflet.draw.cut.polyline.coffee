@@ -54,13 +54,13 @@ class L.Cut.Polyline extends L.Handler
     @_availableLayers.on 'layeradd', @_enableLayer, @
     @_availableLayers.on 'layerremove', @_disableLayer, @
 
-    @_map.on L.Cutting.Polyline.Event.SELECT, @_cut, @
+    @_map.on L.Cutting.Polyline.Event.SELECT, @_cutMode, @
 
     @_map.on 'zoomend moveend', () =>
       @refreshAvailableLayers()
 
     @_map.on 'mousemove', @_selectLayer, @
-    @_map.on 'mousemove', @_cut, @
+    @_map.on 'mousemove', @_cutMode, @
 
 
     # @_map.on L.Cutting.Polyline.Event.UNSELECT, @_cancelCutDrawing, @
@@ -251,7 +251,7 @@ class L.Cut.Polyline extends L.Handler
       @_activeLayer = null
       @_map.fire L.Cutting.Polyline.Event.UNSELECT, layer: layer
 
-  _cut: (e) ->
+  _cutMode: (e) ->
     return unless @_activeLayer
     mouseLatLng = e.event || e.latlng
     mousePoint = mouseLatLng.toTurfFeature()
@@ -344,13 +344,11 @@ class L.Cut.Polyline extends L.Handler
 
     @_stopCutDrawing()
 
-  _stopCutDrawing: () ->
+  _cut: (layer, polyline) ->
 
-    drawnPolyline = @_activeLayer.cutting._poly
+    activeLineString = layer.outerRingAsTurfLineString()
 
-    activeLineString = @_activeLayer.outerRingAsTurfLineString()
-
-    [firstPoint, ..., lastPoint] = drawnPolyline.getLatLngs()
+    [firstPoint, ..., lastPoint] = polyline.getLatLngs()
     slicedLineString = turfLineSlice(firstPoint.toTurfFeature(), lastPoint.toTurfFeature(), activeLineString)
 
     # clean duplicate points
@@ -367,7 +365,7 @@ class L.Cut.Polyline extends L.Handler
     slicedPolyline.fromTurfFeature(rewindSlicedLineString)
     # slicedPolyline.addTo @_map
 
-    cuttingLineString = drawnPolyline.toTurfFeature()
+    cuttingLineString = polyline.toTurfFeature()
     rewindCuttingLineString = turfRewind(cuttingLineString)
     cuttingPolyline = new L.Polyline []
     cuttingPolyline.fromTurfFeature(rewindCuttingLineString)
@@ -375,11 +373,21 @@ class L.Cut.Polyline extends L.Handler
 
     slicedPolyline.merge cuttingPolyline
 
-    @_activeLayer.cutting.disable()
 
     slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), fillColor: '#009688', fillOpacity: 1, opacity: 1, weight: 2, color: 'black')
 
     remainingPolygon = @_difference(@_activeLayer, slicedPolygon)
+
+    [slicedPolygon, remainingPolygon, cuttingPolyline]
+
+
+  _stopCutDrawing: () ->
+
+    drawnPolyline = @_activeLayer.cutting._poly
+
+    [slicedPolygon, remainingPolygon, cuttingPolyline] = @_cut @_activeLayer, drawnPolyline
+
+    @_activeLayer.cutting.disable()
 
     @_map.removeLayer @_activeLayer
     slicedPolygon.addTo @_map
@@ -411,40 +419,7 @@ class L.Cut.Polyline extends L.Handler
 
     drawnPolyline = e.target
 
-    # return if L.stamp(e.marker) == L.stamp(drawnPolyline._verticesHandlers[0]._markers[0]) || L.stamp(e.marker) == L.stamp(drawnPolyline._verticesHandlers[0]._markers[..].pop())
-
-    activeLineString = @_activeLayer.outerRingAsTurfLineString()
-
-    [firstPoint, ..., lastPoint] = drawnPolyline.getLatLngs()
-    slicedLineString = turfLineSlice(firstPoint.toTurfFeature(), lastPoint.toTurfFeature(), activeLineString)
-
-    # clean duplicate points
-    coords = []
-    turfMeta.coordEach slicedLineString, (current, index) ->
-      unless index > 0 and coords[..].pop() == current
-        coords.push current
-
-    slicedLineString = turf.lineString coords
-
-    rewindSlicedLineString = turfRewind(slicedLineString, true)
-
-    slicedPolyline = new L.Polyline []
-    slicedPolyline.fromTurfFeature(rewindSlicedLineString)
-    # slicedPolyline.addTo @_map
-
-    cuttingLineString = drawnPolyline.toTurfFeature()
-    rewindCuttingLineString = turfRewind(cuttingLineString)
-    cuttingPolyline = new L.Polyline []
-    cuttingPolyline.fromTurfFeature(rewindCuttingLineString)
-    # cuttingPolyline.addTo @_map
-
-    slicedPolyline.merge cuttingPolyline
-
-    @_activeLayer.cutting.disable()
-
-    slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), fillColor: '#009688', fillOpacity: 1, opacity: 1, weight: 2, color: 'black')
-
-    remainingPolygon = @_difference(@_activeLayer, slicedPolygon)
+    [slicedPolygon, remainingPolygon, ...] = @_cut @_activeLayer, drawnPolyline
 
     @_map.removeLayer @_activeLayer
     slicedPolygon.addTo @_map
