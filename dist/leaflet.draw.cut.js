@@ -825,7 +825,7 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype.refreshAvailableLayers = function() {
-    var addList, i, j, l, len, len1, newLayers, removeList, results;
+    var addList, j, k, l, len, len1, newLayers, removeList, results;
     if (!this._featureGroup.getLayers().length) {
       return;
     }
@@ -835,8 +835,8 @@ L.Cut.Polyline = (function(superClass) {
         return !newLayers.hasLayer(layer);
       });
       if (removeList.length) {
-        for (i = 0, len = removeList.length; i < len; i++) {
-          l = removeList[i];
+        for (j = 0, len = removeList.length; j < len; j++) {
+          l = removeList[j];
           this._availableLayers.removeLayer(l);
         }
       }
@@ -847,8 +847,8 @@ L.Cut.Polyline = (function(superClass) {
       })(this));
       if (addList.length) {
         results = [];
-        for (j = 0, len1 = addList.length; j < len1; j++) {
-          l = addList[j];
+        for (k = 0, len1 = addList.length; k < len1; k++) {
+          l = addList[k];
           results.push(this._availableLayers.addLayer(l));
         }
         return results;
@@ -933,11 +933,11 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._selectLayer = function(e) {
-    var i, layer, len, mouseLatLng, mousePoint, polygon, ref;
+    var j, layer, len, mouseLatLng, mousePoint, polygon, ref;
     mouseLatLng = e.latlng;
     ref = this._availableLayers.getLayers();
-    for (i = 0, len = ref.length; i < len; i++) {
-      layer = ref[i];
+    for (j = 0, len = ref.length; j < len; j++) {
+      layer = ref[j];
       mousePoint = mouseLatLng.toTurfFeature();
       polygon = layer.toTurfFeature();
       if (turfinside["default"](mousePoint, polygon)) {
@@ -1127,7 +1127,7 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._stopCutDrawing = function() {
-    var cuttingPolyline, drawnPolyline, i, len, marker, ref, ref1, remainingPolygon, slicedPolygon;
+    var cuttingPolyline, drawnPolyline, j, len, marker, ref, ref1, remainingPolygon, slicedPolygon;
     drawnPolyline = this._activeLayer.cutting._poly;
     ref = this._cut(this._activeLayer, drawnPolyline), slicedPolygon = ref[0], remainingPolygon = ref[1], cuttingPolyline = ref[2];
     this._activeLayer.cutting.disable();
@@ -1148,8 +1148,8 @@ L.Cut.Polyline = (function(superClass) {
     this._activeLayer.editing._poly.addTo(this._map);
     this._activeLayer.editing.enable();
     ref1 = this._activeLayer.editing._verticesHandlers[0]._markers;
-    for (i = 0, len = ref1.length; i < len; i++) {
-      marker = ref1[i];
+    for (j = 0, len = ref1.length; j < len; j++) {
+      marker = ref1[j];
       if (L.stamp(marker) === L.stamp(this._activeLayer.editing._verticesHandlers[0]._markers[0]) || L.stamp(marker) === L.stamp(this._activeLayer.editing._verticesHandlers[0]._markers.slice(0).pop())) {
         marker.on('move', this.glueMarker, this);
       }
@@ -1159,9 +1159,22 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._moveMarker = function(e) {
-    var drawnPolyline, ref, remainingPolygon, slicedPolygon;
-    this._activeLayer._polys.clearLayers();
+    var drawnPolyline, i, marker, markerPoint, polygon, ref, remainingPolygon, slicedPolygon;
+    marker = e.marker;
     drawnPolyline = e.target;
+    markerPoint = marker.getLatLng().toTurfFeature();
+    polygon = this._activeLayer.toTurfFeature();
+    if (!turfinside["default"](markerPoint, polygon, {
+      ignoreBoundary: true
+    })) {
+      marker._latlng = L.latLng(0, 0);
+      i = marker._index;
+      this._activeLayer.editing._verticesHandlers[0]._spliceLatLngs(i, 0, L.latLng(45, -1));
+      this._activeLayer.editing._verticesHandlers[0]._markers.splice(i, 0, marker);
+      this._activeLayer.editing._poly.redraw();
+      marker.update();
+    }
+    this._activeLayer._polys.clearLayers();
     ref = this._cut(this._activeLayer, drawnPolyline), slicedPolygon = ref[0], remainingPolygon = ref[1];
     this._map.removeLayer(this._activeLayer);
     slicedPolygon.addTo(this._map);

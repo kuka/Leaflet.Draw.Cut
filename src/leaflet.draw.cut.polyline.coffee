@@ -415,9 +415,21 @@ class L.Cut.Polyline extends L.Handler
 
   _moveMarker: (e) ->
 
-    @_activeLayer._polys.clearLayers()
-
+    marker = e.marker
     drawnPolyline = e.target
+
+    markerPoint = marker.getLatLng().toTurfFeature()
+    polygon = @_activeLayer.toTurfFeature()
+
+    unless turfinside.default(markerPoint, polygon, ignoreBoundary: true)
+      marker._latlng = L.latLng(0, 0)
+      i = marker._index
+      @_activeLayer.editing._verticesHandlers[0]._spliceLatLngs(i, 0, L.latLng(45,-1))
+      @_activeLayer.editing._verticesHandlers[0]._markers.splice(i, 0, marker)
+      @_activeLayer.editing._poly.redraw()
+      marker.update()
+
+    @_activeLayer._polys.clearLayers()
 
     [slicedPolygon, remainingPolygon, ...] = @_cut @_activeLayer, drawnPolyline
 
