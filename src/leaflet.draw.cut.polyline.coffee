@@ -393,29 +393,29 @@ class L.Cut.Polyline extends L.Handler
     slicedPolygon.addTo @_map
     remainingPolygon.addTo @_map
 
-    @_activeLayer._polys = []
-    @_activeLayer._polys.push slicedPolygon
-    @_activeLayer._polys.push remainingPolygon
+    @_activeLayer._polys = new L.LayerGroup()
+    @_activeLayer._polys.addLayer slicedPolygon
+    @_activeLayer._polys.addLayer remainingPolygon
 
     @_map.fire L.Cutting.Polyline.Event.CREATED, layers: [slicedPolygon, remainingPolygon]
 
-    editPoly = new L.Edit.Poly cuttingPolyline
-    editPoly._poly.options.editing = {color: '#fe57a1', dashArray: '10, 10'}
+    @_activeLayer.editing = new L.Edit.Poly cuttingPolyline
+    @_activeLayer.editing._poly.options.editing = {color: '#fe57a1', dashArray: '10, 10'}
 
-    # editPoly._poly.on 'editdrag', @_moveMarker, @
+    @_activeLayer.editing._poly.addTo(@_map)
+    @_activeLayer.editing.enable()
 
-    editPoly._poly.addTo(@_map)
-    editPoly.enable()
-
-    console.error editPoly._verticesHandlers[0]._markers[0]
-
-    for marker in editPoly._verticesHandlers[0]._markers
-      if L.stamp(marker) == L.stamp(editPoly._verticesHandlers[0]._markers[0]) || L.stamp(marker) == L.stamp(editPoly._verticesHandlers[0]._markers[..].pop())
+    for marker in @_activeLayer.editing._verticesHandlers[0]._markers
+      if L.stamp(marker) == L.stamp(@_activeLayer.editing._verticesHandlers[0]._markers[0]) || L.stamp(marker) == L.stamp(@_activeLayer.editing._verticesHandlers[0]._markers[..].pop())
         marker.on 'move', @glueMarker, @
+
+    @_activeLayer.editing._poly.on 'editdrag', @_moveMarker, @
 
     @_map.off 'click', @_finishDrawing, @
 
   _moveMarker: (e) ->
+
+    @_activeLayer._polys.clearLayers()
 
     drawnPolyline = e.target
 
@@ -425,9 +425,9 @@ class L.Cut.Polyline extends L.Handler
     slicedPolygon.addTo @_map
     remainingPolygon.addTo @_map
 
-    @_activeLayer._polys = []
-    @_activeLayer._polys.push slicedPolygon
-    @_activeLayer._polys.push remainingPolygon
+    @_activeLayer._polys.addLayer slicedPolygon
+    @_activeLayer._polys.addLayer remainingPolygon
+    @_activeLayer.editing._poly.bringToFront()
 
   # _backupLayer: (layer) ->
   #   id = L.Util.stamp(layer)

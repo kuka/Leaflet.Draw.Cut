@@ -1127,47 +1127,48 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._stopCutDrawing = function() {
-    var cuttingPolyline, drawnPolyline, editPoly, i, len, marker, ref, ref1, remainingPolygon, slicedPolygon;
+    var cuttingPolyline, drawnPolyline, i, len, marker, ref, ref1, remainingPolygon, slicedPolygon;
     drawnPolyline = this._activeLayer.cutting._poly;
     ref = this._cut(this._activeLayer, drawnPolyline), slicedPolygon = ref[0], remainingPolygon = ref[1], cuttingPolyline = ref[2];
     this._activeLayer.cutting.disable();
     this._map.removeLayer(this._activeLayer);
     slicedPolygon.addTo(this._map);
     remainingPolygon.addTo(this._map);
-    this._activeLayer._polys = [];
-    this._activeLayer._polys.push(slicedPolygon);
-    this._activeLayer._polys.push(remainingPolygon);
+    this._activeLayer._polys = new L.LayerGroup();
+    this._activeLayer._polys.addLayer(slicedPolygon);
+    this._activeLayer._polys.addLayer(remainingPolygon);
     this._map.fire(L.Cutting.Polyline.Event.CREATED, {
       layers: [slicedPolygon, remainingPolygon]
     });
-    editPoly = new L.Edit.Poly(cuttingPolyline);
-    editPoly._poly.options.editing = {
+    this._activeLayer.editing = new L.Edit.Poly(cuttingPolyline);
+    this._activeLayer.editing._poly.options.editing = {
       color: '#fe57a1',
       dashArray: '10, 10'
     };
-    editPoly._poly.addTo(this._map);
-    editPoly.enable();
-    console.error(editPoly._verticesHandlers[0]._markers[0]);
-    ref1 = editPoly._verticesHandlers[0]._markers;
+    this._activeLayer.editing._poly.addTo(this._map);
+    this._activeLayer.editing.enable();
+    ref1 = this._activeLayer.editing._verticesHandlers[0]._markers;
     for (i = 0, len = ref1.length; i < len; i++) {
       marker = ref1[i];
-      if (L.stamp(marker) === L.stamp(editPoly._verticesHandlers[0]._markers[0]) || L.stamp(marker) === L.stamp(editPoly._verticesHandlers[0]._markers.slice(0).pop())) {
+      if (L.stamp(marker) === L.stamp(this._activeLayer.editing._verticesHandlers[0]._markers[0]) || L.stamp(marker) === L.stamp(this._activeLayer.editing._verticesHandlers[0]._markers.slice(0).pop())) {
         marker.on('move', this.glueMarker, this);
       }
     }
+    this._activeLayer.editing._poly.on('editdrag', this._moveMarker, this);
     return this._map.off('click', this._finishDrawing, this);
   };
 
   Polyline.prototype._moveMarker = function(e) {
     var drawnPolyline, ref, remainingPolygon, slicedPolygon;
+    this._activeLayer._polys.clearLayers();
     drawnPolyline = e.target;
     ref = this._cut(this._activeLayer, drawnPolyline), slicedPolygon = ref[0], remainingPolygon = ref[1];
     this._map.removeLayer(this._activeLayer);
     slicedPolygon.addTo(this._map);
     remainingPolygon.addTo(this._map);
-    this._activeLayer._polys = [];
-    this._activeLayer._polys.push(slicedPolygon);
-    return this._activeLayer._polys.push(remainingPolygon);
+    this._activeLayer._polys.addLayer(slicedPolygon);
+    this._activeLayer._polys.addLayer(remainingPolygon);
+    return this._activeLayer.editing._poly.bringToFront();
   };
 
   Polyline.prototype._hasAvailableLayers = function() {
