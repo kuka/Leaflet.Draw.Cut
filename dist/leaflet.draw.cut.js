@@ -758,6 +758,8 @@ L.Cutting.Polyline.Event.UNSELECT = "cut:polyline:unselect";
 
 L.Cutting.Polyline.Event.CREATED = "cut:polyline:created";
 
+L.Cutting.Polyline.Event.UPDATED = "cut:polyline:updated";
+
 L.Cut.Polyline = (function(superClass) {
   extend(Polyline, superClass);
 
@@ -1187,7 +1189,10 @@ L.Cut.Polyline = (function(superClass) {
     remainingPolygon.addTo(this._map);
     this._activeLayer._polys.addLayer(slicedPolygon);
     this._activeLayer._polys.addLayer(remainingPolygon);
-    return this._activeLayer.editing._poly.bringToFront();
+    this._activeLayer.editing._poly.bringToFront();
+    return this._map.fire(L.Cutting.Polyline.Event.UPDATED, {
+      layers: [slicedPolygon, remainingPolygon]
+    });
   };
 
   Polyline.prototype._hasAvailableLayers = function() {

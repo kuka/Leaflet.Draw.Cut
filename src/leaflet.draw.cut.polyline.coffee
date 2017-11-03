@@ -20,6 +20,7 @@ L.Cutting.Polyline.Event.STOP = "cut:polyline:stop"
 L.Cutting.Polyline.Event.SELECT = "cut:polyline:select"
 L.Cutting.Polyline.Event.UNSELECT = "cut:polyline:unselect"
 L.Cutting.Polyline.Event.CREATED = "cut:polyline:created"
+L.Cutting.Polyline.Event.UPDATED = "cut:polyline:updated"
 # L.Cutting.Polyline.Event.SELECTED = "layerSelection:selected"
 
 class L.Cut.Polyline extends L.Handler
@@ -448,6 +449,9 @@ class L.Cut.Polyline extends L.Handler
     @_activeLayer._polys.addLayer slicedPolygon
     @_activeLayer._polys.addLayer remainingPolygon
     @_activeLayer.editing._poly.bringToFront()
+
+    @_map.fire L.Cutting.Polyline.Event.UPDATED, layers: [slicedPolygon, remainingPolygon]
+
 
   # _backupLayer: (layer) ->
   #   id = L.Util.stamp(layer)
