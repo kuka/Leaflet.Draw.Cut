@@ -282,6 +282,7 @@ class L.Cut.Polyline extends L.Handler
   glueMarker: (e) =>
     # console.error e.target
     marker = e.target || @_activeLayer.cutting._mouseMarker
+    marker.glue = true
     closest = L.GeometryUtil.closest(@_map, @_activeLayer, e.latlng, false)
     marker._latlng = L.latLng(closest.lat, closest.lng)
     marker.update()
@@ -408,26 +409,33 @@ class L.Cut.Polyline extends L.Handler
     for marker in @_activeLayer.editing._verticesHandlers[0]._markers
       if L.stamp(marker) == L.stamp(@_activeLayer.editing._verticesHandlers[0]._markers[0]) || L.stamp(marker) == L.stamp(@_activeLayer.editing._verticesHandlers[0]._markers[..].pop())
         marker.on 'move', @glueMarker, @
+      else
+        marker.on 'move', @_moveMarker, @
 
     @_activeLayer.editing._poly.on 'editdrag', @_moveMarker, @
 
     @_map.off 'click', @_finishDrawing, @
 
   _moveMarker: (e) ->
+    marker = e.marker || e.target || e
 
-    marker = e.marker
-    drawnPolyline = e.target
+    drawnPolyline = @_activeLayer.editing._poly
 
-    markerPoint = marker.getLatLng().toTurfFeature()
-    polygon = @_activeLayer.toTurfFeature()
+    unless marker.glue
+      latlng = marker._latlng
 
-    unless turfinside.default(markerPoint, polygon, ignoreBoundary: true)
-      marker._latlng = L.latLng(0, 0)
-      i = marker._index
-      @_activeLayer.editing._verticesHandlers[0]._spliceLatLngs(i, 0, L.latLng(45,-1))
-      @_activeLayer.editing._verticesHandlers[0]._markers.splice(i, 0, marker)
-      @_activeLayer.editing._poly.redraw()
-      marker.update()
+      markerPoint = latlng.toTurfFeature()
+      polygon = @_activeLayer.toTurfFeature()
+
+      if !turfinside.default(markerPoint, polygon, ignoreBoundary: true) && oldLatLng = e.oldLatLng
+
+        i = marker._index
+        marker._latlng = oldLatLng
+        marker.update()
+
+        @_activeLayer.editing._verticesHandlers[0]._spliceLatLngs(i, 0, oldLatLng)
+        @_activeLayer.editing._verticesHandlers[0]._markers.splice(i, 0, marker)
+        @_activeLayer.editing._poly.redraw()
 
     @_activeLayer._polys.clearLayers()
 

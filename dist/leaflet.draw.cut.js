@@ -1036,6 +1036,7 @@ L.Cut.Polyline = (function(superClass) {
   Polyline.prototype.glueMarker = function(e) {
     var closest, marker;
     marker = e.target || this._activeLayer.cutting._mouseMarker;
+    marker.glue = true;
     closest = L.GeometryUtil.closest(this._map, this._activeLayer, e.latlng, false);
     marker._latlng = L.latLng(closest.lat, closest.lng);
     return marker.update();
@@ -1152,6 +1153,8 @@ L.Cut.Polyline = (function(superClass) {
       marker = ref1[j];
       if (L.stamp(marker) === L.stamp(this._activeLayer.editing._verticesHandlers[0]._markers[0]) || L.stamp(marker) === L.stamp(this._activeLayer.editing._verticesHandlers[0]._markers.slice(0).pop())) {
         marker.on('move', this.glueMarker, this);
+      } else {
+        marker.on('move', this._moveMarker, this);
       }
     }
     this._activeLayer.editing._poly.on('editdrag', this._moveMarker, this);
@@ -1159,20 +1162,23 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._moveMarker = function(e) {
-    var drawnPolyline, i, marker, markerPoint, polygon, ref, remainingPolygon, slicedPolygon;
-    marker = e.marker;
-    drawnPolyline = e.target;
-    markerPoint = marker.getLatLng().toTurfFeature();
-    polygon = this._activeLayer.toTurfFeature();
-    if (!turfinside["default"](markerPoint, polygon, {
-      ignoreBoundary: true
-    })) {
-      marker._latlng = L.latLng(0, 0);
-      i = marker._index;
-      this._activeLayer.editing._verticesHandlers[0]._spliceLatLngs(i, 0, L.latLng(45, -1));
-      this._activeLayer.editing._verticesHandlers[0]._markers.splice(i, 0, marker);
-      this._activeLayer.editing._poly.redraw();
-      marker.update();
+    var drawnPolyline, i, latlng, marker, markerPoint, oldLatLng, polygon, ref, remainingPolygon, slicedPolygon;
+    marker = e.marker || e.target || e;
+    drawnPolyline = this._activeLayer.editing._poly;
+    if (!marker.glue) {
+      latlng = marker._latlng;
+      markerPoint = latlng.toTurfFeature();
+      polygon = this._activeLayer.toTurfFeature();
+      if (!turfinside["default"](markerPoint, polygon, {
+        ignoreBoundary: true
+      }) && (oldLatLng = e.oldLatLng)) {
+        i = marker._index;
+        marker._latlng = oldLatLng;
+        marker.update();
+        this._activeLayer.editing._verticesHandlers[0]._spliceLatLngs(i, 0, oldLatLng);
+        this._activeLayer.editing._verticesHandlers[0]._markers.splice(i, 0, marker);
+        this._activeLayer.editing._poly.redraw();
+      }
     }
     this._activeLayer._polys.clearLayers();
     ref = this._cut(this._activeLayer, drawnPolyline), slicedPolygon = ref[0], remainingPolygon = ref[1];
