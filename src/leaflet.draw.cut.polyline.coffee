@@ -79,8 +79,25 @@ class L.Cut.Polyline extends L.Handler
     @_map.fire L.Cutting.Polyline.Event.STOP, handler: @type
 
     @_map.off L.Cutting.Polyline.Event.SELECT, @_startCutDrawing, @
-    # @_map.off L.Cutting.Polyline.Event.UNSELECT, @_stopCutDrawing, @
-    # @_map.off L.Draw.Event.CREATED, @_stopCutDrawing, @
+
+    if @_activeLayer.cutting
+      @_activeLayer.cutting.disable()
+
+      if @_activeLayer.cutting._poly
+        @_map.removeLayer @_activeLayer.cutting._poly
+
+    if @_activeLayer.editing
+      @_activeLayer.editing.disable()
+
+      @_featureGroup.addData(@_activeLayer.toGeoJSON())
+
+      if @_activeLayer.editing._poly
+        @_map.removeLayer @_activeLayer.editing._poly
+
+    if @_activeLayer._polys
+      @_activeLayer._polys.clearLayers()
+
+      delete @_activeLayer._polys
 
 
     @fire 'disabled', handler: @type
@@ -145,21 +162,13 @@ class L.Cut.Polyline extends L.Handler
     @_featureGroup.eachLayer @_disableLayer, @
 
   save: ->
-    # selectedLayers = new L.LayerGroup
-    # @_featureGroup.eachLayer (layer) ->
-    #   if layer.selected
-    #     selectedLayers.addLayer layer
-    #     layer.selected = false
-    # @_map.fire L.Cutting.Polyline.Event.SELECTED, layers: selectedLayers
+    if @_activeLayer._polys
+      @_activeLayer._polys.eachLayer (l) =>
+        @_featureGroup.addData l.toGeoJSON()
 
-    #TMP
-    @_featureGroup.eachLayer (l) =>
-      @_map.removeLayer(l)
-    @_featureGroup.addLayer(@_activeLayer._poly)
-    @_featureGroup.addTo(@_map)
-    # @_map.removeLayer(@_activeLayer._poly)
-    delete @_activeLayer._poly
-    delete @_activeLayer
+      @_activeLayer._polys.clearLayers()
+      delete @_activeLayer._polys
+      @_map.removeLayer @_activeLayer
     return
 
   _enableLayer: (e) ->
@@ -392,10 +401,11 @@ class L.Cut.Polyline extends L.Handler
     @_activeLayer.cutting.disable()
 
     @_map.removeLayer @_activeLayer
-    slicedPolygon.addTo @_map
-    remainingPolygon.addTo @_map
+    # slicedPolygon.addTo @_map
+    # remainingPolygon.addTo @_map
 
     @_activeLayer._polys = new L.LayerGroup()
+    @_activeLayer._polys.addTo @_map
     @_activeLayer._polys.addLayer slicedPolygon
     @_activeLayer._polys.addLayer remainingPolygon
 

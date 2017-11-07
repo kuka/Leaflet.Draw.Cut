@@ -816,6 +816,23 @@ L.Cut.Polyline = (function(superClass) {
       handler: this.type
     });
     this._map.off(L.Cutting.Polyline.Event.SELECT, this._startCutDrawing, this);
+    if (this._activeLayer.cutting) {
+      this._activeLayer.cutting.disable();
+      if (this._activeLayer.cutting._poly) {
+        this._map.removeLayer(this._activeLayer.cutting._poly);
+      }
+    }
+    if (this._activeLayer.editing) {
+      this._activeLayer.editing.disable();
+      this._featureGroup.addData(this._activeLayer.toGeoJSON());
+      if (this._activeLayer.editing._poly) {
+        this._map.removeLayer(this._activeLayer.editing._poly);
+      }
+    }
+    if (this._activeLayer._polys) {
+      this._activeLayer._polys.clearLayers();
+      delete this._activeLayer._polys;
+    }
     this.fire('disabled', {
       handler: this.type
     });
@@ -900,15 +917,16 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype.save = function() {
-    this._featureGroup.eachLayer((function(_this) {
-      return function(l) {
-        return _this._map.removeLayer(l);
-      };
-    })(this));
-    this._featureGroup.addLayer(this._activeLayer._poly);
-    this._featureGroup.addTo(this._map);
-    delete this._activeLayer._poly;
-    delete this._activeLayer;
+    if (this._activeLayer._polys) {
+      this._activeLayer._polys.eachLayer((function(_this) {
+        return function(l) {
+          return _this._featureGroup.addData(l.toGeoJSON());
+        };
+      })(this));
+      this._activeLayer._polys.clearLayers();
+      delete this._activeLayer._polys;
+      this._map.removeLayer(this._activeLayer);
+    }
   };
 
   Polyline.prototype._enableLayer = function(e) {
@@ -1135,9 +1153,8 @@ L.Cut.Polyline = (function(superClass) {
     ref = this._cut(this._activeLayer, drawnPolyline), slicedPolygon = ref[0], remainingPolygon = ref[1], cuttingPolyline = ref[2];
     this._activeLayer.cutting.disable();
     this._map.removeLayer(this._activeLayer);
-    slicedPolygon.addTo(this._map);
-    remainingPolygon.addTo(this._map);
     this._activeLayer._polys = new L.LayerGroup();
+    this._activeLayer._polys.addTo(this._map);
     this._activeLayer._polys.addLayer(slicedPolygon);
     this._activeLayer._polys.addLayer(remainingPolygon);
     this._map.fire(L.Cutting.Polyline.Event.CREATED, {
