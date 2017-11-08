@@ -760,6 +760,8 @@ L.Cutting.Polyline.Event.CREATED = "cut:polyline:created";
 
 L.Cutting.Polyline.Event.UPDATED = "cut:polyline:updated";
 
+L.Cutting.Polyline.Event.SAVED = "cut:polyline:saved";
+
 L.Cut.Polyline = (function(superClass) {
   extend(Polyline, superClass);
 
@@ -917,6 +919,8 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype.save = function() {
+    var newLayers;
+    newLayers = [];
     if (this._activeLayer._polys) {
       this._activeLayer._polys.eachLayer((function(_this) {
         return function(l) {
@@ -925,6 +929,14 @@ L.Cut.Polyline = (function(superClass) {
       })(this));
       this._activeLayer._polys.clearLayers();
       delete this._activeLayer._polys;
+      newLayers = this._featureGroup.getLayers().slice(-2);
+      this._map.fire(L.Cutting.Polyline.Event.SAVED, {
+        oldLayer: {
+          uuid: this._activeLayer.feature.properties.uuid,
+          type: this._activeLayer.feature.properties.type
+        },
+        layers: newLayers
+      });
       this._map.removeLayer(this._activeLayer);
     }
   };

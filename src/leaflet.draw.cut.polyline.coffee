@@ -21,6 +21,7 @@ L.Cutting.Polyline.Event.SELECT = "cut:polyline:select"
 L.Cutting.Polyline.Event.UNSELECT = "cut:polyline:unselect"
 L.Cutting.Polyline.Event.CREATED = "cut:polyline:created"
 L.Cutting.Polyline.Event.UPDATED = "cut:polyline:updated"
+L.Cutting.Polyline.Event.SAVED = "cut:polyline:saved"
 # L.Cutting.Polyline.Event.SELECTED = "layerSelection:selected"
 
 class L.Cut.Polyline extends L.Handler
@@ -162,12 +163,19 @@ class L.Cut.Polyline extends L.Handler
     @_featureGroup.eachLayer @_disableLayer, @
 
   save: ->
+    newLayers = []
+
     if @_activeLayer._polys
       @_activeLayer._polys.eachLayer (l) =>
         @_featureGroup.addData l.toGeoJSON()
 
       @_activeLayer._polys.clearLayers()
       delete @_activeLayer._polys
+
+      newLayers = @_featureGroup.getLayers()[-2..-1]
+
+      @_map.fire L.Cutting.Polyline.Event.SAVED, oldLayer: {uuid: @_activeLayer.feature.properties.uuid, type: @_activeLayer.feature.properties.type}, layers: newLayers
+
       @_map.removeLayer @_activeLayer
     return
 
