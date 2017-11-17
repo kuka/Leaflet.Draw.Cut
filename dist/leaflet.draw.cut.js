@@ -818,20 +818,20 @@ L.Cut.Polyline = (function(superClass) {
       handler: this.type
     });
     this._map.off(L.Cutting.Polyline.Event.SELECT, this._startCutDrawing, this);
-    if (this._activeLayer.cutting) {
+    if (this._activeLayer && this._activeLayer.cutting) {
       this._activeLayer.cutting.disable();
-      if (this._activeLayer.cutting._poly) {
+      if (this._activeLayer && this._activeLayer.cutting._poly) {
         this._map.removeLayer(this._activeLayer.cutting._poly);
       }
     }
-    if (this._activeLayer.editing) {
+    if (this._activeLayer && this._activeLayer.editing) {
       this._activeLayer.editing.disable();
       this._featureGroup.addData(this._activeLayer.toGeoJSON());
-      if (this._activeLayer.editing._poly) {
+      if (this._activeLayer && this._activeLayer.editing._poly) {
         this._map.removeLayer(this._activeLayer.editing._poly);
       }
     }
-    if (this._activeLayer._polys) {
+    if (this._activeLayer && this._activeLayer._polys) {
       this._activeLayer._polys.clearLayers();
       delete this._activeLayer._polys;
     }
@@ -1085,6 +1085,7 @@ L.Cut.Polyline = (function(superClass) {
     if (this._activeLayer.cutting._markers) {
       markerCount = this._activeLayer.cutting._markers.length;
       marker = this._activeLayer.cutting._markers[markerCount - 1];
+      console.error('glueONCLick', marker, this._activeLayer.cutting._markers);
       if (markerCount === 1) {
         this._activeLayer.cutting._snapper.addOrigin(this._activeLayer.cutting._markers[0]);
         L.DomUtil.addClass(this._activeLayer.cutting._markers[0]._icon, 'marker-origin');

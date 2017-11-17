@@ -81,21 +81,21 @@ class L.Cut.Polyline extends L.Handler
 
     @_map.off L.Cutting.Polyline.Event.SELECT, @_startCutDrawing, @
 
-    if @_activeLayer.cutting
+    if @_activeLayer and @_activeLayer.cutting
       @_activeLayer.cutting.disable()
 
-      if @_activeLayer.cutting._poly
+      if @_activeLayer and @_activeLayer.cutting._poly
         @_map.removeLayer @_activeLayer.cutting._poly
 
-    if @_activeLayer.editing
+    if @_activeLayer and @_activeLayer.editing
       @_activeLayer.editing.disable()
 
       @_featureGroup.addData(@_activeLayer.toGeoJSON())
 
-      if @_activeLayer.editing._poly
+      if @_activeLayer and @_activeLayer.editing._poly
         @_map.removeLayer @_activeLayer.editing._poly
 
-    if @_activeLayer._polys
+    if @_activeLayer and @_activeLayer._polys
       @_activeLayer._polys.clearLayers()
 
       delete @_activeLayer._polys
@@ -313,10 +313,10 @@ class L.Cut.Polyline extends L.Handler
     @_map.on 'click', @_glue_on_click, @
 
   _glue_on_click: =>
-
     if @_activeLayer.cutting._markers
       markerCount = @_activeLayer.cutting._markers.length
       marker = @_activeLayer.cutting._markers[markerCount - 1]
+      console.error 'glueONCLick', marker, @_activeLayer.cutting._markers
 
       if markerCount == 1
         @_activeLayer.cutting._snapper.addOrigin(@_activeLayer.cutting._markers[0])
