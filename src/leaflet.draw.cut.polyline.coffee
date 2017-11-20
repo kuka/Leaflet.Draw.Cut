@@ -134,18 +134,6 @@ class L.Cut.Polyline extends L.Handler
     else
       @_availableLayers = @_featureGroup
 
-
-  # Returns a MultiPolygon
-  _intersect: (layer1, layer2) ->
-
-    polygon1 = layer1.toTurfFeature()
-    polygon2 = layer2.toTurfFeature()
-    intersection = turfIntersect(polygon1, polygon2)
-
-    L.geoJSON intersection,
-      style: () ->
-        fill: false, color: 'green', dashArray: '8, 8', opacity: 1
-
   #layer1 - layer2
   _difference: (layer1, layer2) ->
 
@@ -156,7 +144,7 @@ class L.Cut.Polyline extends L.Handler
 
     L.geoJSON difference,
       style: () ->
-        fillColor: '#3f51b5', opacity: 1, fillOpacity: 1, color: 'black', weight: 2
+        fillColor: '#3f51b5', opacity: 1, fillOpacity: 0.7, color: 'black', weight: 2
 
 
   removeHooks: ->
@@ -393,7 +381,7 @@ class L.Cut.Polyline extends L.Handler
     slicedPolyline.merge cuttingPolyline
 
 
-    slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), fillColor: '#009688', fillOpacity: 1, opacity: 1, weight: 2, color: 'black')
+    slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), fillColor: '#009688', fillOpacity: 0.7, opacity: 1, weight: 2, color: 'black')
 
     remainingPolygon = @_difference(@_activeLayer, slicedPolygon)
 

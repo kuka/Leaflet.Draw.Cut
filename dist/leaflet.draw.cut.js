@@ -879,23 +879,6 @@ L.Cut.Polyline = (function(superClass) {
     }
   };
 
-  Polyline.prototype._intersect = function(layer1, layer2) {
-    var intersection, polygon1, polygon2;
-    polygon1 = layer1.toTurfFeature();
-    polygon2 = layer2.toTurfFeature();
-    intersection = turfIntersect(polygon1, polygon2);
-    return L.geoJSON(intersection, {
-      style: function() {
-        return {
-          fill: false,
-          color: 'green',
-          dashArray: '8, 8',
-          opacity: 1
-        };
-      }
-    });
-  };
-
   Polyline.prototype._difference = function(layer1, layer2) {
     var difference, polygon1, polygon2;
     polygon1 = layer1.toTurfFeature();
@@ -906,7 +889,7 @@ L.Cut.Polyline = (function(superClass) {
         return {
           fillColor: '#3f51b5',
           opacity: 1,
-          fillOpacity: 1,
+          fillOpacity: 0.7,
           color: 'black',
           weight: 2
         };
@@ -1151,7 +1134,7 @@ L.Cut.Polyline = (function(superClass) {
     slicedPolyline.merge(cuttingPolyline);
     slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), {
       fillColor: '#009688',
-      fillOpacity: 1,
+      fillOpacity: 0.7,
       opacity: 1,
       weight: 2,
       color: 'black'
