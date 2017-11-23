@@ -1060,15 +1060,19 @@ L.Cut.Polyline = (function(superClass) {
   Polyline.prototype._glue_on_enabled = function() {
     this._activeLayer.glue = true;
     this._activeLayer.cutting._snapper.unwatchMarker(this._activeLayer.cutting._mouseMarker);
+    this._activeLayer.cutting._mouseMarker.on('mousedown', this._glue_on_click, this);
     return this._map.on('click', this._glue_on_click, this);
   };
 
   Polyline.prototype._glue_on_click = function() {
     var latlngs, marker, markerCount, poly, snapPoint;
+    if (!this._activeLayer.cutting._mouseDownOrigin && !this._activeLayer.cutting._markers.length) {
+      this._activeLayer.cutting._mouseMarker;
+      this._activeLayer.cutting.addVertex(this._activeLayer.cutting._mouseMarker._latlng);
+    }
     if (this._activeLayer.cutting._markers) {
       markerCount = this._activeLayer.cutting._markers.length;
       marker = this._activeLayer.cutting._markers[markerCount - 1];
-      console.error('glueONCLick', marker, this._activeLayer.cutting._markers);
       if (markerCount === 1) {
         this._activeLayer.cutting._snapper.addOrigin(this._activeLayer.cutting._markers[0]);
         L.DomUtil.addClass(this._activeLayer.cutting._markers[0]._icon, 'marker-origin');
@@ -1088,18 +1092,19 @@ L.Cut.Polyline = (function(superClass) {
         this._map.off('mousemove', this._selectLayer, this);
         this._startPoint = marker;
         this._activeLayer.cutting._mouseMarker.off('move', this.glueMarker, this);
+        this._activeLayer.cutting._mouseMarker.off('mousedown', this._glue_on_click, this);
         this._map.off('click', this._glue_on_click, this);
         this._activeLayer.cutting._snapper.watchMarker(this._activeLayer.cutting._mouseMarker);
         this._activeLayer.cutting._mouseMarker.off('snap', this._glue_on_enabled, this);
         this._activeLayer.cutting._mouseMarker.on('snap', (function(_this) {
           return function(e) {
-            console.error('snap');
+            _this._map.on(L.Draw.Event.DRAWVERTEX, _this._finishDrawing, _this);
             return _this._map.on('click', _this._finishDrawing, _this);
           };
         })(this));
         return this._activeLayer.cutting._mouseMarker.on('unsnap', (function(_this) {
           return function(e) {
-            console.error('unsnap');
+            _this._map.off(L.Draw.Event.DRAWVERTEX, _this._finishDrawing, _this);
             return _this._map.off('click', _this._finishDrawing, _this);
           };
         })(this));
@@ -1108,7 +1113,20 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._finishDrawing = function(e) {
-    console.error('finish');
+    var lastMarker, latlng, latlngs, marker, markerCount, poly;
+    markerCount = this._activeLayer.cutting._markers.length;
+    marker = this._activeLayer.cutting._markers[markerCount - 1];
+    if (L.Browser.touch) {
+      lastMarker = this._activeLayer.cutting._markers.pop();
+      poly = this._activeLayer.cutting._poly;
+      latlngs = poly.getLatLngs();
+      latlng = latlngs.splice(-1, 1)[0];
+      this._activeLayer.cutting._poly.setLatLngs(latlngs);
+    }
+    if (!e.layers || L.Browser.touch) {
+      this._activeLayer.cutting._markers.push(this._activeLayer.cutting._createMarker(this._activeLayer.cutting._mouseMarker._latlng));
+      this._activeLayer.cutting._poly.addLatLng(this._activeLayer.cutting._mouseMarker._latlng);
+    }
     return this._stopCutDrawing();
   };
 

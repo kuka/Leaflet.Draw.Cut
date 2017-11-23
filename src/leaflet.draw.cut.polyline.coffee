@@ -286,7 +286,6 @@ class L.Cut.Polyline extends L.Handler
       @_activeLayer.cutting._mouseMarker.on 'snap', @_glue_on_enabled, @
 
   glueMarker: (e) =>
-    # console.error e.target
     marker = e.target || @_activeLayer.cutting._mouseMarker
     marker.glue = true
     closest = L.GeometryUtil.closest(@_map, @_activeLayer, e.latlng, false)
@@ -298,13 +297,19 @@ class L.Cut.Polyline extends L.Handler
 
     @_activeLayer.cutting._snapper.unwatchMarker(@_activeLayer.cutting._mouseMarker)
 
+    @_activeLayer.cutting._mouseMarker.on 'mousedown', @_glue_on_click, @
     @_map.on 'click', @_glue_on_click, @
 
+
   _glue_on_click: =>
+
+    if !@_activeLayer.cutting._mouseDownOrigin && !@_activeLayer.cutting._markers.length
+      @_activeLayer.cutting._mouseMarker
+      @_activeLayer.cutting.addVertex(@_activeLayer.cutting._mouseMarker._latlng)
+
     if @_activeLayer.cutting._markers
       markerCount = @_activeLayer.cutting._markers.length
       marker = @_activeLayer.cutting._markers[markerCount - 1]
-      console.error 'glueONCLick', marker, @_activeLayer.cutting._markers
 
       if markerCount == 1
         @_activeLayer.cutting._snapper.addOrigin(@_activeLayer.cutting._markers[0])
@@ -332,22 +337,34 @@ class L.Cut.Polyline extends L.Handler
         @_startPoint = marker
 
         @_activeLayer.cutting._mouseMarker.off 'move', @glueMarker, @
+        @_activeLayer.cutting._mouseMarker.off 'mousedown', @_glue_on_click, @
         @_map.off 'click', @_glue_on_click, @
         @_activeLayer.cutting._snapper.watchMarker(@_activeLayer.cutting._mouseMarker)
 
         @_activeLayer.cutting._mouseMarker.off 'snap', @_glue_on_enabled, @
 
         @_activeLayer.cutting._mouseMarker.on 'snap', (e) =>
-          console.error 'snap'
+          @_map.on L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
           @_map.on 'click', @_finishDrawing, @
 
         @_activeLayer.cutting._mouseMarker.on 'unsnap', (e) =>
-          console.error 'unsnap'
+          @_map.off L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
           @_map.off 'click', @_finishDrawing, @
 
-
   _finishDrawing: (e) ->
-    console.error 'finish'
+    markerCount = @_activeLayer.cutting._markers.length
+    marker = @_activeLayer.cutting._markers[markerCount - 1]
+
+    if L.Browser.touch
+      lastMarker = @_activeLayer.cutting._markers.pop()
+      poly = @_activeLayer.cutting._poly
+      latlngs = poly.getLatLngs()
+      latlng = latlngs.splice(-1, 1)[0]
+      @_activeLayer.cutting._poly.setLatLngs(latlngs)
+
+    if !e.layers or L.Browser.touch
+      @_activeLayer.cutting._markers.push(@_activeLayer.cutting._createMarker(@_activeLayer.cutting._mouseMarker._latlng))
+      @_activeLayer.cutting._poly.addLatLng(@_activeLayer.cutting._mouseMarker._latlng)
 
     @_stopCutDrawing()
 
