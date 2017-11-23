@@ -768,6 +768,7 @@ L.Cut.Polyline = (function(superClass) {
   Polyline.TYPE = 'cut-polyline';
 
   function Polyline(map, options) {
+    this._constraintSnap = bind(this._constraintSnap, this);
     this._glue_on_click = bind(this._glue_on_click, this);
     this._glue_on_enabled = bind(this._glue_on_enabled, this);
     this.glueMarker = bind(this.glueMarker, this);
@@ -1099,16 +1100,36 @@ L.Cut.Polyline = (function(superClass) {
         this._activeLayer.cutting._mouseMarker.on('snap', (function(_this) {
           return function(e) {
             _this._map.on(L.Draw.Event.DRAWVERTEX, _this._finishDrawing, _this);
-            return _this._map.on('click', _this._finishDrawing, _this);
+            _this._map.on('click', _this._finishDrawing, _this);
+            return _this._activeLayer.cutting._mouseMarker.off('move', _this._constraintSnap, _this);
           };
         })(this));
         return this._activeLayer.cutting._mouseMarker.on('unsnap', (function(_this) {
           return function(e) {
+            _this._activeLayer.cutting._mouseMarker.on('move', _this._constraintSnap, _this);
             _this._map.off(L.Draw.Event.DRAWVERTEX, _this._finishDrawing, _this);
             return _this._map.off('click', _this._finishDrawing, _this);
           };
         })(this));
       }
+    }
+  };
+
+  Polyline.prototype._constraintSnap = function(e) {
+    var marker, markerPoint, polygon, snapPoint;
+    marker = this._activeLayer.cutting._mouseMarker;
+    markerPoint = marker._latlng.toTurfFeature();
+    polygon = this._activeLayer.toTurfFeature();
+    if (!turfinside["default"](markerPoint, polygon, {
+      ignoreBoundary: true
+    })) {
+      this.glueMarker({
+        target: this._activeLayer.cutting._mouseMarker,
+        latlng: this._activeLayer.cutting._mouseMarker._latlng
+      });
+      snapPoint = this._map.latLngToLayerPoint(marker._latlng);
+      this._activeLayer.cutting._updateGuide(snapPoint);
+      return this._map.on('click', this._finishDrawing, this);
     }
   };
 

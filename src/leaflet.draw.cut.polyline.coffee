@@ -346,10 +346,25 @@ class L.Cut.Polyline extends L.Handler
         @_activeLayer.cutting._mouseMarker.on 'snap', (e) =>
           @_map.on L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
           @_map.on 'click', @_finishDrawing, @
+          @_activeLayer.cutting._mouseMarker.off 'move', @_constraintSnap, @
 
         @_activeLayer.cutting._mouseMarker.on 'unsnap', (e) =>
+          @_activeLayer.cutting._mouseMarker.on 'move', @_constraintSnap, @
+
           @_map.off L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
           @_map.off 'click', @_finishDrawing, @
+
+
+  _constraintSnap: (e) =>
+    marker = @_activeLayer.cutting._mouseMarker
+    markerPoint = marker._latlng.toTurfFeature()
+    polygon = @_activeLayer.toTurfFeature()
+
+    if !turfinside.default(markerPoint, polygon, ignoreBoundary: true)
+      @glueMarker(target: @_activeLayer.cutting._mouseMarker, latlng: @_activeLayer.cutting._mouseMarker._latlng)
+      snapPoint = @_map.latLngToLayerPoint marker._latlng
+      @_activeLayer.cutting._updateGuide snapPoint
+      @_map.on 'click', @_finishDrawing, @
 
   _finishDrawing: (e) ->
     markerCount = @_activeLayer.cutting._markers.length
