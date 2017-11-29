@@ -34,8 +34,6 @@ class L.Cut.Polyline extends L.Handler
     @options = _.merge @options, options
 
     @_featureGroup = options.featureGroup
-    @_availableLayers = new L.FeatureGroup
-    @_activeLayer = undefined
     @_uneditedLayerProps = []
 
     if !(@_featureGroup instanceof L.FeatureGroup)
@@ -45,14 +43,14 @@ class L.Cut.Polyline extends L.Handler
     if @_enabled or !@_featureGroup.getLayers().length
       return
 
+    @_availableLayers = new L.FeatureGroup
+    @_activeLayer = undefined
+
     @fire 'enabled', handler: @type
 
     @_map.fire L.Cutting.Polyline.Event.START, handler: @type
 
-    super
-
     @_availableLayers.addTo @_map
-
     @_availableLayers.on 'layeradd', @_enableLayer, @
     @_availableLayers.on 'layerremove', @_disableLayer, @
 
@@ -65,6 +63,7 @@ class L.Cut.Polyline extends L.Handler
     @_map.on 'mousemove', @_cutMode, @
 
 
+    super
     # @_map.on L.Cutting.Polyline.Event.UNSELECT, @_cancelCutDrawing, @
     # @_map.on L.Draw.Event.DRAWSTART, @_stopCutDrawing, @
     # @_map.on L.Draw.Event.CREATED, @_stopCutDrawing, @
@@ -86,6 +85,9 @@ class L.Cut.Polyline extends L.Handler
 
       if @_activeLayer and @_activeLayer.cutting._poly
         @_map.removeLayer @_activeLayer.cutting._poly
+        delete @_activeLayer.cutting._poly
+
+      delete @_activeLayer.cutting
 
     if @_activeLayer and @_activeLayer.editing
       @_activeLayer.editing.disable()
@@ -97,11 +99,23 @@ class L.Cut.Polyline extends L.Handler
       @_activeLayer._polys.clearLayers()
 
       delete @_activeLayer._polys
+      delete @_activeLayer.editing
+    unless @_featureGroup._map
+      @_map.addLayer @_featureGroup
 
-    # @_map.off 'mousemove', @_selectLayer, @
-    # @_map.off 'mousemove', @_cutMode, @
+    @_availableLayers.eachLayer (l) =>
+      @_map.removeLayer l
+    @_availableLayers.length = 0
 
-    @_map.removeLayer @_availableLayers
+    @_startPoint = null
+    delete @_activeLayer.glue
+    @_activeLayer = null
+
+    @_map.off L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
+    @_map.off 'click', @_finishDrawing, @
+
+    @_map.off 'mousemove', @_selectLayer, @
+    @_map.off 'mousemove', @_cutMode, @
 
     @fire 'disabled', handler: @type
     return
@@ -110,7 +124,7 @@ class L.Cut.Polyline extends L.Handler
 
     @refreshAvailableLayers()
 
-    @_availableLayers.eachLayer @_enableLayer, @
+    # @_availableLayers.eachLayer @_enableLayer, @
 
     @_map.removeLayer @_featureGroup
 
@@ -119,7 +133,7 @@ class L.Cut.Polyline extends L.Handler
 
     #RTree
     if typeof @_featureGroup.search == 'function'
-      newLayers = new L.LayerGroup(@_featureGroup.search(@_map.getBounds()))
+      newLayers = new L.FeatureGroup(@_featureGroup.search(@_map.getBounds()))
 
       removeList = @_availableLayers.getLayers().filter (layer) ->
         !newLayers.hasLayer layer
@@ -129,7 +143,7 @@ class L.Cut.Polyline extends L.Handler
           @_availableLayers.removeLayer l
 
       addList = newLayers.getLayers().filter (layer) =>
-        !@_availableLayers.hasLayer layer
+        !@_availableLayers.hasUUIDLayer layer
 
       if addList.length
         for l in addList
@@ -155,7 +169,7 @@ class L.Cut.Polyline extends L.Handler
       console.error "He's dead, Jim."
 
   removeHooks: ->
-    @_featureGroup.eachLayer @_disableLayer, @
+    @_availableLayers.eachLayer @_disableLayer, @
 
   save: ->
     newLayers = []
@@ -312,8 +326,9 @@ class L.Cut.Polyline extends L.Handler
     @_map.on 'click', @_glue_on_click, @
 
 
-  _glue_on_click: =>
+  _glue_on_click: (e) =>
 
+    console.error 'glueonclick', e
     if !@_activeLayer.cutting._mouseDownOrigin && !@_activeLayer.cutting._markers.length
       @_activeLayer.cutting._mouseMarker
       @_activeLayer.cutting.addVertex(@_activeLayer.cutting._mouseMarker._latlng)
