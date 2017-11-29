@@ -45,3 +45,14 @@ L.Polyline.include
 
   fromTurfFeature: (feature) ->
     @setLatLngs(turfFlip(feature).geometry.coordinates)
+
+L.LayerGroup.include
+  getLayerUUID: (layer) ->
+    layer.feature.properties.uuid
+
+  hasUUIDLayer: (layer) ->
+    if !!layer && layerUUID = @getLayerUUID(layer)
+      for id, l of @_layers
+        if @getLayerUUID(l) == layerUUID
+          return true
+    return false

@@ -51,7 +51,7 @@ class L.Cut.Polyline extends L.Handler
 
     super
 
-    # @refreshAvailableLayers()
+    @_availableLayers.addTo @_map
 
     @_availableLayers.on 'layeradd', @_enableLayer, @
     @_availableLayers.on 'layerremove', @_disableLayer, @
@@ -90,8 +90,6 @@ class L.Cut.Polyline extends L.Handler
     if @_activeLayer and @_activeLayer.editing
       @_activeLayer.editing.disable()
 
-      @_featureGroup.addData(@_activeLayer.toGeoJSON())
-
       if @_activeLayer and @_activeLayer.editing._poly
         @_map.removeLayer @_activeLayer.editing._poly
 
@@ -100,6 +98,10 @@ class L.Cut.Polyline extends L.Handler
 
       delete @_activeLayer._polys
 
+    # @_map.off 'mousemove', @_selectLayer, @
+    # @_map.off 'mousemove', @_cutMode, @
+
+    @_map.removeLayer @_availableLayers
 
     @fire 'disabled', handler: @type
     return
@@ -109,6 +111,8 @@ class L.Cut.Polyline extends L.Handler
     @refreshAvailableLayers()
 
     @_availableLayers.eachLayer @_enableLayer, @
+
+    @_map.removeLayer @_featureGroup
 
   refreshAvailableLayers: ->
     return unless @_featureGroup.getLayers().length
@@ -129,7 +133,8 @@ class L.Cut.Polyline extends L.Handler
 
       if addList.length
         for l in addList
-          @_availableLayers.addLayer(l)
+          unless @_availableLayers.hasUUIDLayer l
+            @_availableLayers.addLayer(l)
 
     else
       @_availableLayers = @_featureGroup
@@ -154,6 +159,8 @@ class L.Cut.Polyline extends L.Handler
 
   save: ->
     newLayers = []
+
+    @_map.addLayer @_featureGroup
 
     if @_activeLayer._polys
       @_activeLayer._polys.eachLayer (l) =>
@@ -190,24 +197,27 @@ class L.Cut.Polyline extends L.Handler
       # Use the existing color of the layer
       if pathOptions.maintainColor
         pathOptions.color = layer.options.color
-        pathOptions.fillColor = layer.options.fillColor
+        pathOptions.fillColor = layer.options.fillColor || pathOptions.color
 
       layer.options.selected = pathOptions
 
     layer.setStyle layer.options.disabled
 
   _selectLayer: (e) ->
-    # layer = e.target || e.layer || e
     mouseLatLng = e.latlng
-    for layer in @_availableLayers.getLayers()
+    found = false
+
+    @_availableLayers.eachLayer (layer) =>
       mousePoint = mouseLatLng.toTurfFeature()
       polygon = layer.toTurfFeature()
 
       if turfinside.default(mousePoint, polygon)
         if layer != @_activeLayer
           @_activate layer, mouseLatLng
+        found = true
         return
 
+    return if found
     if @_activeLayer && !@_activeLayer.glue
       @_unselectLayer @_activeLayer
 
@@ -242,7 +252,6 @@ class L.Cut.Polyline extends L.Handler
     if !layer.selected
       layer.selected = true
       layer.setStyle layer.options.selected
-
       if @_activeLayer
         @_unselectLayer @_activeLayer
 
@@ -274,11 +283,10 @@ class L.Cut.Polyline extends L.Handler
 
         # Use the existing color of the layer
         if pathOptions.maintainColor
-          pathOptions.color = layer.options.color
-          pathOptions.fillColor = layer.options.fillColor
+          pathOptions.color = @_activeLayer.options.color
+          pathOptions.fillColor = @_activeLayer.options.fillColor
 
         pathOptions.fillOpacity = 0.5
-        # layer.options.original = L.extend {}, layer.options
         @_activeLayer.options.cutting = pathOptions
 
       @_activeLayer.cutting.enable()
@@ -494,22 +502,6 @@ class L.Cut.Polyline extends L.Handler
     @_activeLayer.editing._poly.bringToFront()
 
     @_map.fire L.Cutting.Polyline.Event.UPDATED, layers: [slicedPolygon, remainingPolygon]
-
-
-  # _backupLayer: (layer) ->
-  #   id = L.Util.stamp(layer)
-  #
-  #   if !@_uneditedLayerProps[id]
-  #     # Polyline, Polygon or Rectangle
-  #     if layer instanceof L.Polyline or layer instanceof L.Polygon or layer instanceof L.Rectangle
-  #       @_uneditedLayerProps[id] = latlngs: L.LatLngUtil.cloneLatLngs(layer.getLatLngs())
-  #     else if layer instanceof L.Circle
-  #       @_uneditedLayerProps[id] =
-  #         latlng: L.LatLngUtil.cloneLatLng(layer.getLatLng())
-  #         radius: layer.getRadius()
-  #     else if layer instanceof L.Marker or layer instanceof L.CircleMarker
-  #       # Marker
-  #       @_uneditedLayerProps[id] = latlng: L.LatLngUtil.cloneLatLng(layer.getLatLng())
 
   _hasAvailableLayers: ->
     @_availableLayers.length != 0

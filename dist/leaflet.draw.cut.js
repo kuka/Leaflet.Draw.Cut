@@ -796,6 +796,7 @@ L.Cut.Polyline = (function(superClass) {
       handler: this.type
     });
     Polyline.__super__.enable.apply(this, arguments);
+    this._availableLayers.addTo(this._map);
     this._availableLayers.on('layeradd', this._enableLayer, this);
     this._availableLayers.on('layerremove', this._disableLayer, this);
     this._map.on(L.Cutting.Polyline.Event.SELECT, this._cutMode, this);
@@ -827,7 +828,6 @@ L.Cut.Polyline = (function(superClass) {
     }
     if (this._activeLayer && this._activeLayer.editing) {
       this._activeLayer.editing.disable();
-      this._featureGroup.addData(this._activeLayer.toGeoJSON());
       if (this._activeLayer && this._activeLayer.editing._poly) {
         this._map.removeLayer(this._activeLayer.editing._poly);
       }
@@ -836,6 +836,7 @@ L.Cut.Polyline = (function(superClass) {
       this._activeLayer._polys.clearLayers();
       delete this._activeLayer._polys;
     }
+    this._map.removeLayer(this._availableLayers);
     this.fire('disabled', {
       handler: this.type
     });
@@ -843,7 +844,8 @@ L.Cut.Polyline = (function(superClass) {
 
   Polyline.prototype.addHooks = function() {
     this.refreshAvailableLayers();
-    return this._availableLayers.eachLayer(this._enableLayer, this);
+    this._availableLayers.eachLayer(this._enableLayer, this);
+    return this._map.removeLayer(this._featureGroup);
   };
 
   Polyline.prototype.refreshAvailableLayers = function() {
@@ -871,7 +873,11 @@ L.Cut.Polyline = (function(superClass) {
         results = [];
         for (k = 0, len1 = addList.length; k < len1; k++) {
           l = addList[k];
-          results.push(this._availableLayers.addLayer(l));
+          if (!this._availableLayers.hasUUIDLayer(l)) {
+            results.push(this._availableLayers.addLayer(l));
+          } else {
+            results.push(void 0);
+          }
         }
         return results;
       }
@@ -909,6 +915,7 @@ L.Cut.Polyline = (function(superClass) {
   Polyline.prototype.save = function() {
     var newLayers;
     newLayers = [];
+    this._map.addLayer(this._featureGroup);
     if (this._activeLayer._polys) {
       this._activeLayer._polys.eachLayer((function(_this) {
         return function(l) {
@@ -945,7 +952,7 @@ L.Cut.Polyline = (function(superClass) {
       pathOptions = L.Util.extend({}, this.options.selectedPathOptions);
       if (pathOptions.maintainColor) {
         pathOptions.color = layer.options.color;
-        pathOptions.fillColor = layer.options.fillColor;
+        pathOptions.fillColor = layer.options.fillColor || pathOptions.color;
       }
       layer.options.selected = pathOptions;
     }
@@ -953,19 +960,24 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._selectLayer = function(e) {
-    var j, layer, len, mouseLatLng, mousePoint, polygon, ref;
+    var found, mouseLatLng;
     mouseLatLng = e.latlng;
-    ref = this._availableLayers.getLayers();
-    for (j = 0, len = ref.length; j < len; j++) {
-      layer = ref[j];
-      mousePoint = mouseLatLng.toTurfFeature();
-      polygon = layer.toTurfFeature();
-      if (turfinside["default"](mousePoint, polygon)) {
-        if (layer !== this._activeLayer) {
-          this._activate(layer, mouseLatLng);
+    found = false;
+    this._availableLayers.eachLayer((function(_this) {
+      return function(layer) {
+        var mousePoint, polygon;
+        mousePoint = mouseLatLng.toTurfFeature();
+        polygon = layer.toTurfFeature();
+        if (turfinside["default"](mousePoint, polygon)) {
+          if (layer !== _this._activeLayer) {
+            _this._activate(layer, mouseLatLng);
+          }
+          found = true;
         }
-        return;
-      }
+      };
+    })(this));
+    if (found) {
+      return;
     }
     if (this._activeLayer && !this._activeLayer.glue) {
       return this._unselectLayer(this._activeLayer);
@@ -1040,8 +1052,8 @@ L.Cut.Polyline = (function(superClass) {
       if (this.options.cuttingPathOptions) {
         pathOptions = L.Util.extend({}, this.options.cuttingPathOptions);
         if (pathOptions.maintainColor) {
-          pathOptions.color = layer.options.color;
-          pathOptions.fillColor = layer.options.fillColor;
+          pathOptions.color = this._activeLayer.options.color;
+          pathOptions.fillColor = this._activeLayer.options.fillColor;
         }
         pathOptions.fillOpacity = 0.5;
         this._activeLayer.options.cutting = pathOptions;
@@ -17119,6 +17131,25 @@ L.Polyline.include({
   },
   fromTurfFeature: function(feature) {
     return this.setLatLngs(turfFlip(feature).geometry.coordinates);
+  }
+});
+
+L.LayerGroup.include({
+  getLayerUUID: function(layer) {
+    return layer.feature.properties.uuid;
+  },
+  hasUUIDLayer: function(layer) {
+    var id, l, layerUUID, ref;
+    if (!!layer && (layerUUID = this.getLayerUUID(layer))) {
+      ref = this._layers;
+      for (id in ref) {
+        l = ref[id];
+        if (this.getLayerUUID(l) === layerUUID) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 });
 
