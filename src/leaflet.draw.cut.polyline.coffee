@@ -43,7 +43,9 @@ class L.Cut.Polyline extends L.Handler
     if @_enabled or !@_featureGroup.getLayers().length
       return
 
-    @_availableLayers = new L.FeatureGroup
+    @_availableLayers = new L.GeoJSON [], style: (feature) ->
+      color: feature.properties.color
+
     @_activeLayer = undefined
 
     @fire 'enabled', handler: @type
@@ -56,8 +58,7 @@ class L.Cut.Polyline extends L.Handler
 
     @_map.on L.Cutting.Polyline.Event.SELECT, @_cutMode, @
 
-    @_map.on 'zoomend moveend', () =>
-      @refreshAvailableLayers()
+    @_map.on 'zoomend moveend', @refreshAvailableLayers, @
 
     @_map.on 'mousemove', @_selectLayer, @
     @_map.on 'mousemove', @_cutMode, @
@@ -117,6 +118,8 @@ class L.Cut.Polyline extends L.Handler
     @_map.off 'mousemove', @_selectLayer, @
     @_map.off 'mousemove', @_cutMode, @
 
+    @_map.off 'zoomend moveend', @refreshAvailableLayers, @
+
     @fire 'disabled', handler: @type
     return
 
@@ -148,7 +151,9 @@ class L.Cut.Polyline extends L.Handler
       if addList.length
         for l in addList
           unless @_availableLayers.hasUUIDLayer l
-            @_availableLayers.addLayer(l)
+            geojson = l.toGeoJSON()
+            geojson.properties.color = l.options.color
+            @_availableLayers.addData(geojson)
 
     else
       @_availableLayers = @_featureGroup
