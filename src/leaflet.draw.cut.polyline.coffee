@@ -443,7 +443,6 @@ class L.Cut.Polyline extends L.Handler
 
     slicedPolyline.merge cuttingPolyline
 
-
     slicedPolygon = L.polygon(slicedPolyline.getLatLngs(), fillColor: '#009688', fillOpacity: 0.6, opacity: 1, weight: 2, color: 'black')
 
     remainingPolygon = @_difference(@_activeLayer, slicedPolygon)

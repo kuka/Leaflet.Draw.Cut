@@ -17132,17 +17132,24 @@ L.LatLng.prototype.toTurfFeature = function() {
 
 L.Polyline.include({
   merge: function(polyline) {
-    var i, latLng, latLngs, len, results;
+    var firstPoint, i, j, lastPoint, latLng, latLngs, len, length;
     latLngs = polyline.getLatLngs();
     if (!latLngs.length) {
       return;
     }
-    results = [];
-    for (i = 0, len = latLngs.length; i < len; i++) {
+    firstPoint = this.getLatLngs()[0];
+    lastPoint = this.getLatLngs()[this.getLatLngs().length - 1];
+    length = latLngs.length;
+    for (i = j = 0, len = latLngs.length; j < len; i = ++j) {
       latLng = latLngs[i];
-      results.push(this.addLatLng(latLng));
+      if (i === 0) {
+        latLng = lastPoint;
+      }
+      if (i === (length - 1)) {
+        latLng = firstPoint;
+      }
+      this.addLatLng(latLng);
     }
-    return results;
   },
   toTurfFeature: function() {
     var coords;

@@ -35,8 +35,17 @@ L.Polyline.include
     latLngs = polyline.getLatLngs()
     return unless latLngs.length
 
-    for latLng in latLngs
+    firstPoint = @getLatLngs()[0]
+    lastPoint = @getLatLngs()[@getLatLngs().length - 1]
+    length = latLngs.length
+
+    for latLng, i in latLngs
+      if i == 0
+        latLng = lastPoint
+      if i == (length - 1)
+        latLng = firstPoint
       @addLatLng(latLng)
+    return
 
   toTurfFeature: ->
     return if @isEmpty() or !@_latlngs
