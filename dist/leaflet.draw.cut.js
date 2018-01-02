@@ -976,6 +976,7 @@ L.Cut.Polyline = (function(superClass) {
         pathOptions.color = layer.options.color;
         pathOptions.fillColor = layer.options.fillColor || pathOptions.color;
       }
+      pathOptions.fillOpacity = layer.options.fillOpacity || pathOptions.fillOpacity;
       layer.options.selected = pathOptions;
     }
     return layer.setStyle(layer.options.disabled);

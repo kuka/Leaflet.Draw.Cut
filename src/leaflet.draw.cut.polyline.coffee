@@ -218,6 +218,8 @@ class L.Cut.Polyline extends L.Handler
         pathOptions.color = layer.options.color
         pathOptions.fillColor = layer.options.fillColor || pathOptions.color
 
+      pathOptions.fillOpacity = layer.options.fillOpacity || pathOptions.fillOpacity
+
       layer.options.selected = pathOptions
 
     layer.setStyle layer.options.disabled
