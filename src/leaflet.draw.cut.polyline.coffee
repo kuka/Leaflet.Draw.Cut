@@ -331,9 +331,11 @@ class L.Cut.Polyline extends L.Handler
     @_map.on 'click', @_glue_on_click, @
 
 
+  _disable_on_mouseup: (e) ->
+    L.DomEvent.stopPropagation e
+
   _glue_on_click: (e) =>
 
-    console.error 'glueonclick', e
     if !@_activeLayer.cutting._mouseDownOrigin && !@_activeLayer.cutting._markers.length
       @_activeLayer.cutting._mouseMarker
       @_activeLayer.cutting.addVertex(@_activeLayer.cutting._mouseMarker._latlng)
@@ -362,6 +364,8 @@ class L.Cut.Polyline extends L.Handler
         @_activeLayer.setStyle(@_activeLayer.options.cutting)
 
         @_activeLayer.glue = false
+
+        marker.on 'mouseup', @_disable_on_mouseup, @
 
         @_map.off 'mousemove', @_selectLayer, @
 
