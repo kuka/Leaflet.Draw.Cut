@@ -101,6 +101,7 @@ class L.Cut.Polyline extends L.Handler
 
       delete @_activeLayer._polys
       delete @_activeLayer.editing
+      delete @_activeLayer.glue
     unless @_featureGroup._map
       @_map.addLayer @_featureGroup
 
@@ -109,7 +110,6 @@ class L.Cut.Polyline extends L.Handler
     @_availableLayers.length = 0
 
     @_startPoint = null
-    delete @_activeLayer.glue
     @_activeLayer = null
 
     @_map.off L.Draw.Event.DRAWVERTEX, @_finishDrawing, @
@@ -132,6 +132,8 @@ class L.Cut.Polyline extends L.Handler
     @_map.removeLayer @_featureGroup
 
   refreshAvailableLayers: ->
+    @_featureGroup.addTo @_map
+
     return unless @_featureGroup.getLayers().length
 
     #RTree
@@ -157,6 +159,7 @@ class L.Cut.Polyline extends L.Handler
 
     else
       @_availableLayers = @_featureGroup
+    @_map.removeLayer @_featureGroup
 
   #layer1 - layer2
   _difference: (layer1, layer2) ->

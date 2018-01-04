@@ -840,6 +840,7 @@ L.Cut.Polyline = (function(superClass) {
       this._activeLayer._polys.clearLayers();
       delete this._activeLayer._polys;
       delete this._activeLayer.editing;
+      delete this._activeLayer.glue;
     }
     if (!this._featureGroup._map) {
       this._map.addLayer(this._featureGroup);
@@ -851,7 +852,6 @@ L.Cut.Polyline = (function(superClass) {
     })(this));
     this._availableLayers.length = 0;
     this._startPoint = null;
-    delete this._activeLayer.glue;
     this._activeLayer = null;
     this._map.off(L.Draw.Event.DRAWVERTEX, this._finishDrawing, this);
     this._map.off('click', this._finishDrawing, this);
@@ -869,7 +869,8 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype.refreshAvailableLayers = function() {
-    var addList, geojson, j, k, l, len, len1, newLayers, removeList, results;
+    var addList, geojson, j, k, l, len, len1, newLayers, removeList;
+    this._featureGroup.addTo(this._map);
     if (!this._featureGroup.getLayers().length) {
       return;
     }
@@ -890,22 +891,19 @@ L.Cut.Polyline = (function(superClass) {
         };
       })(this));
       if (addList.length) {
-        results = [];
         for (k = 0, len1 = addList.length; k < len1; k++) {
           l = addList[k];
           if (!this._availableLayers.hasUUIDLayer(l)) {
             geojson = l.toGeoJSON();
             geojson.properties.color = l.options.color;
-            results.push(this._availableLayers.addData(geojson));
-          } else {
-            results.push(void 0);
+            this._availableLayers.addData(geojson);
           }
         }
-        return results;
       }
     } else {
-      return this._availableLayers = this._featureGroup;
+      this._availableLayers = this._featureGroup;
     }
+    return this._map.removeLayer(this._featureGroup);
   };
 
   Polyline.prototype._difference = function(layer1, layer2) {
