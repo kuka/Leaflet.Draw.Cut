@@ -770,6 +770,7 @@ L.Cut.Polyline = (function(superClass) {
   function Polyline(map, options) {
     this._constraintSnap = bind(this._constraintSnap, this);
     this._glue_on_click = bind(this._glue_on_click, this);
+    this._disable_on_mouseup = bind(this._disable_on_mouseup, this);
     this._glue_on_enabled = bind(this._glue_on_enabled, this);
     this.glueMarker = bind(this.glueMarker, this);
     this.type = this.constructor.TYPE;
@@ -1104,6 +1105,8 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._disable_on_mouseup = function(e) {
+    this._activeLayer.cutting._enableNewMarkers();
+    this._activeLayer.cutting._clickHandled = null;
     return L.DomEvent.stopPropagation(e);
   };
 

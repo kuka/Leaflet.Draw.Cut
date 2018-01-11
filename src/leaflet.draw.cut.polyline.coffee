@@ -336,7 +336,9 @@ class L.Cut.Polyline extends L.Handler
     @_map.on 'click', @_glue_on_click, @
 
 
-  _disable_on_mouseup: (e) ->
+  _disable_on_mouseup: (e) =>
+    @_activeLayer.cutting._enableNewMarkers()
+    @_activeLayer.cutting._clickHandled = null
     L.DomEvent.stopPropagation e
 
   _glue_on_click: (e) =>
