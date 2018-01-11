@@ -508,15 +508,13 @@ class L.Cut.Polyline extends L.Handler
       markerPoint = latlng.toTurfFeature()
       polygon = @_activeLayer.toTurfFeature()
 
-      if !turfinside.default(markerPoint, polygon, ignoreBoundary: true) && oldLatLng = e.oldLatLng
+      if !turfinside.default(markerPoint, polygon, ignoreBoundary: true) && marker._oldLatLng
 
         i = marker._index
-        marker._latlng = oldLatLng
+        marker._latlng = marker._oldLatLng
         marker.update()
 
-        @_activeLayer.editing._verticesHandlers[0]._spliceLatLngs(i, 0, oldLatLng)
-        @_activeLayer.editing._verticesHandlers[0]._markers.splice(i, 0, marker)
-        @_activeLayer.editing._poly.redraw()
+      marker._oldLatLng = marker._latlng
 
     @_activeLayer._polys.clearLayers()
 

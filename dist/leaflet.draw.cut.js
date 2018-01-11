@@ -1269,7 +1269,7 @@ L.Cut.Polyline = (function(superClass) {
   };
 
   Polyline.prototype._moveMarker = function(e) {
-    var drawnPolyline, i, latlng, marker, markerPoint, oldLatLng, polygon, ref, remainingPolygon, slicedPolygon;
+    var drawnPolyline, i, latlng, marker, markerPoint, polygon, ref, remainingPolygon, slicedPolygon;
     marker = e.marker || e.target || e;
     drawnPolyline = this._activeLayer.editing._poly;
     if (!marker.glue) {
@@ -1278,14 +1278,12 @@ L.Cut.Polyline = (function(superClass) {
       polygon = this._activeLayer.toTurfFeature();
       if (!turfinside["default"](markerPoint, polygon, {
         ignoreBoundary: true
-      }) && (oldLatLng = e.oldLatLng)) {
+      }) && marker._oldLatLng) {
         i = marker._index;
-        marker._latlng = oldLatLng;
+        marker._latlng = marker._oldLatLng;
         marker.update();
-        this._activeLayer.editing._verticesHandlers[0]._spliceLatLngs(i, 0, oldLatLng);
-        this._activeLayer.editing._verticesHandlers[0]._markers.splice(i, 0, marker);
-        this._activeLayer.editing._poly.redraw();
       }
+      marker._oldLatLng = marker._latlng;
     }
     this._activeLayer._polys.clearLayers();
     ref = this._cut(this._activeLayer, drawnPolyline), slicedPolygon = ref[0], remainingPolygon = ref[1];
