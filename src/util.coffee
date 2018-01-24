@@ -1,6 +1,7 @@
 turf = require '@turf/helpers'
 turfFlip = require '@turf/flip'
 
+
 L.Polygon.include
   toTurfFeature: ->
     return if @isEmpty() or !@_latlngs
@@ -12,7 +13,7 @@ L.Polygon.include
     ring0 = if multi then @_latlngs[0][0] else @_latlngs[0]
 
     #Convert to array and close polygon
-    coords = L.GeoJSON.latLngsToCoords(ring0, 0, true)
+    coords = L.GeoJSON.latLngsToCoords(ring0, 0, true, 17)
     turf.polygon([coords])
 
   outerRingAsTurfLineString: ->
@@ -22,7 +23,7 @@ L.Polygon.include
     multi = !L.LineUtil.isFlat(@_latlngs[0])
     ring0 = if multi then @_latlngs[0][0] else @_latlngs[0]
 
-    coords = L.GeoJSON.latLngsToCoords(ring0, 0, true)
+    coords = L.GeoJSON.latLngsToCoords(ring0, 0, true, 17)
     turf.lineString(coords)
 
 #Returns a LatLng object as a Turf Feature<Point>
@@ -31,25 +32,9 @@ L.LatLng::toTurfFeature = ->
   turf.point coords
 
 L.Polyline.include
-  merge: (polyline) ->
-    latLngs = polyline.getLatLngs()
-    return unless latLngs.length
-
-    firstPoint = @getLatLngs()[0]
-    lastPoint = @getLatLngs()[@getLatLngs().length - 1]
-    length = latLngs.length
-
-    for latLng, i in latLngs
-      if i == 0
-        latLng = lastPoint
-      if i == (length - 1)
-        latLng = firstPoint
-      @addLatLng(latLng)
-    return
-
   toTurfFeature: ->
     return if @isEmpty() or !@_latlngs
-    coords = L.GeoJSON.latLngsToCoords(@_latlngs, 0)
+    coords = L.GeoJSON.latLngsToCoords(@_latlngs, 0, 0, 17)
     turf.lineString(coords)
 
   fromTurfFeature: (feature) ->
