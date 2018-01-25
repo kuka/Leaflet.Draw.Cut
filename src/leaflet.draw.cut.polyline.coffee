@@ -6,6 +6,11 @@ turfLineSlice = require '@turf/line-slice'
 turfRewind = require '@turf/rewind'
 turfinside = require '@turf/inside'
 turfKinks = require '@turf/kinks'
+turfMeta = require '@turf/meta'
+# turfBooleanPointOnLine = require '@turf/boolean-point-on-line'
+turfNearestPointOnLine = require '@turf/nearest-point-on-line'
+turfLineIntersect = require '@turf/line-intersect'
+turfTruncate = require '@turf/truncate'
 turfGetCoords = require('@turf/invariant').getCoords
 require 'leaflet-geometryutil'
 
@@ -426,6 +431,17 @@ class L.Cut.Polyline extends L.Handler
     slice2Coords = [[]]
     sliceIndex = 0
 
+    #splitter on the same segment
+    if !removingCoords.length
+      firstSegment = turfNearestPointOnLine.default outerRing, turf.point(firstVertex)
+      lastSegment = turfNearestPointOnLine.default outerRing, turf.point(lastVertex)
+
+      if firstSegment.properties.index is lastSegment.properties.index
+        segmentSplit = null
+        turfMeta.segmentEach outerRing, (currentSegment, featureIndex, multiFeatureIndex, geometryIndex, segmentIndex) ->
+          if segmentIndex is firstSegment.properties.index
+            segmentSplit = turfGetCoords currentSegment
+
     for c in outerRingCoords
       toRemove = removingCoords.filter (coord) ->
         coord[0] is c[0] and coord[1] is c[1]
@@ -436,16 +452,38 @@ class L.Cut.Polyline extends L.Handler
           slice2Coords.push []
         continue
 
+      if (segmentSplit? and segmentSplit[0][0] is c[0] and segmentSplit[0][1] is c[1])
+        slice2Coords[sliceIndex].push c
+        if sliceIndex is 0
+          sliceIndex++
+          slice2Coords.push []
+        continue
+
       slice2Coords[sliceIndex].push c
+
 
     #### splitter ####
     splitter = polyline.toTurfFeature()
+
     splitter = turfRewind splitter
 
     [s1, splitterCoords..., s2] = splitter.geometry.coordinates
     splitterCoords.unshift lastVertex
     splitterCoords.push firstVertex
     splitter = turf.lineString splitterCoords
+
+    #TODO: refacto
+    intersectingPoints = turfTruncate.default(turfLineIntersect.default(splitter, outerRing), precision: 3)
+    if intersectingPoints.features.length > 0
+      simpleFirstVertex = turfGetCoords(turfTruncate.default(firstPoint.toTurfFeature(), precision: 3))
+      simpleLastVertex = turfGetCoords(turfTruncate.default(lastPoint.toTurfFeature(), precision: 3))
+
+      intersect = intersectingPoints.features.filter (feature) ->
+        coord = turfGetCoords feature
+        !(coord[0] is simpleFirstVertex[0] and coord[1] is simpleFirstVertex[1]) and !(coord[0] is simpleLastVertex[0] and coord[1] is simpleLastVertex[1])
+
+      if intersect.length > 0
+        throw new Error("kinks")
 
     #### First polygon ####
     lineString1 = @turfLineMerge slice1, splitter
@@ -473,7 +511,16 @@ class L.Cut.Polyline extends L.Handler
     kinks = turfKinks.default lineString2
 
     #if new polygon is self-intersecting, unkink it by rewinding splitter
+    # if kinks.features.length is 1
+    #   splitter = turfRewind splitter, true
+    #   slice2.splice 1, 1, splitter
+    #   lineString2 = @turfLineMerge slice2...
+    #
+    # if kinks.features.length > 1
+    #   console.error 'slice2 kinking'
+    #   throw new Error("kinks")
     if kinks.features.length > 0
+      console.error kinks.features.length
       splitter = turfRewind splitter, true
       slice2.splice 1, 1, splitter
       lineString2 = @turfLineMerge slice2...
@@ -517,12 +564,14 @@ class L.Cut.Polyline extends L.Handler
 
       @_activeLayer.editing._poly.on 'editstart', (e) =>
         for marker in @_activeLayer.editing._verticesHandlers[0]._markers
+          marker.off 'move', @_moveMarker, @
           if L.stamp(marker) == L.stamp(@_activeLayer.editing._verticesHandlers[0]._markers[0]) || L.stamp(marker) == L.stamp(@_activeLayer.editing._verticesHandlers[0]._markers[..].pop())
             marker.on 'move', @glueMarker, @
-          else
-            marker.on 'move', @_moveMarker, @
-
-      @_activeLayer.editing._poly.on 'editdrag', @_moveMarker, @
+          marker.on 'move', @_moveMarker, @
+          # else
+          #   marker.on 'move', @_moveMarker, @
+          #
+      # @_activeLayer.editing._poly.on 'editdrag', @_moveMarker, @
 
       @_map.off 'click', @_finishDrawing, @
     catch e
@@ -543,7 +592,6 @@ class L.Cut.Polyline extends L.Handler
 
       if !turfinside.default(markerPoint, polygon, ignoreBoundary: true) && marker._oldLatLng
 
-        i = marker._index
         marker._latlng = marker._oldLatLng
         marker.update()
 
@@ -563,8 +611,10 @@ class L.Cut.Polyline extends L.Handler
         @_activeLayer.editing._poly.bringToFront()
 
         @_map.fire L.Cutting.Polyline.Event.UPDATED, layers: [polygon1, polygon2]
-    catch
-      console.error 'catch', e
+    catch err
+      console.error err
+      # marker._latlng = e.oldLatLng
+      # marker.update()
       #revert
       marker._latlng = marker._oldLatLng
       marker.update()
