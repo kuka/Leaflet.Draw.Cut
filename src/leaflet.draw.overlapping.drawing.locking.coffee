@@ -25,6 +25,7 @@ L.Draw.Feature.DrawMixin =
     markerPoint = marker.getLatLng().toTurfFeature()
 
     for guideLayer in @options.guideLayers
+      continue unless typeof guideLayer.getLayers == 'function'
       for layer in guideLayer.getLayers()
         polygon = layer.toTurfFeature()
 

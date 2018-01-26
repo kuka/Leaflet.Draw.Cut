@@ -26417,6 +26417,9 @@ L.Draw.Feature.DrawMixin = {
     results = [];
     for (i = 0, len = ref.length; i < len; i++) {
       guideLayer = ref[i];
+      if (typeof guideLayer.getLayers !== 'function') {
+        continue;
+      }
       results.push((function() {
         var j, len1, ref1, results1;
         ref1 = guideLayer.getLayers();
