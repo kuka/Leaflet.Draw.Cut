@@ -26,8 +26,6 @@ L.Draw.Feature.DrawMixin =
 
   _draw_on_click: (e) ->
 
-    console.error 'clicked', e
-
     latlng = e.target._latlng
 
     markerPoint = latlng.toTurfFeature()
@@ -42,11 +40,11 @@ L.Draw.Feature.DrawMixin =
           latlngs = poly.getLatLngs()
           latlngs.splice -1, 1
           @_poly.setLatLngs latlngs
-          # marker = @_markers.pop()
           markerCount = @_markers.length
           marker = @_markers[markerCount - 1]
 
           if marker
+            @_markers.pop()
             @_map.removeLayer marker
             @_updateGuide()
             return
@@ -55,8 +53,6 @@ L.Draw.Feature.DrawMixin =
     if @_mouseMarker
       @_mouseMarker.off 'mouseup', @_draw_on_click, this
     @_map.off 'layeradd', @_draw_on_enabled, this
-    # @off 'enabled', @_draw_on_enabled, this
-    # @off 'disabled', @_draw_on_disabled, this
 
 L.Draw.Feature.include L.Draw.Feature.DrawMixin
 L.Draw.Feature.addInitHook '_draw_initialize'
