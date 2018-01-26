@@ -18,36 +18,19 @@ L.Draw.Feature.DrawMixin =
       return
     else
       @_map.off 'layeradd', @_draw_on_enabled, this
-      if L.Browser.touch
-        # this._map.on('touchstart', this._draw_on_click, this);
-        @_mouseMarker.on 'mouseup', @_draw_on_click, this
-      else
-        @_mouseMarker.on 'mouseup', @_draw_on_click, this
+      @_map.on L.Draw.Event.DRAWVERTEX, @_draw_on_click, @
 
   _draw_on_click: (e) ->
-
-    latlng = e.target._latlng
-
-    markerPoint = latlng.toTurfFeature()
+    marker = e.layers.getLayers()[..].pop()
+    markerPoint = marker.getLatLng().toTurfFeature()
 
     for guideLayer in @options.guideLayers
+      continue unless typeof guideLayer.getLayers == 'function'
       for layer in guideLayer.getLayers()
         polygon = layer.toTurfFeature()
 
         if turfinside.default(markerPoint, polygon, ignoreBoundary: false)
-
-          poly = @_poly
-          latlngs = poly.getLatLngs()
-          latlngs.splice -1, 1
-          @_poly.setLatLngs latlngs
-          markerCount = @_markers.length
-          marker = @_markers[markerCount - 1]
-
-          if marker
-            @_markers.pop()
-            @_map.removeLayer marker
-            @_updateGuide()
-            return
+          @deleteLastVertex()
 
   _draw_on_disabled: ->
     if @_mouseMarker

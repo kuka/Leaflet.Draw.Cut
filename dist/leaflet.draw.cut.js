@@ -26406,42 +26406,39 @@ L.Draw.Feature.DrawMixin = {
       this._map.on('layeradd', this._draw_on_enabled, this);
     } else {
       this._map.off('layeradd', this._draw_on_enabled, this);
-      if (L.Browser.touch) {
-        return this._mouseMarker.on('mouseup', this._draw_on_click, this);
-      } else {
-        return this._mouseMarker.on('mouseup', this._draw_on_click, this);
-      }
+      return this._map.on(L.Draw.Event.DRAWVERTEX, this._draw_on_click, this);
     }
   },
   _draw_on_click: function(e) {
-    var guideLayer, i, j, latlng, latlngs, layer, len, len1, marker, markerCount, markerPoint, poly, polygon, ref, ref1;
-    latlng = e.target._latlng;
-    markerPoint = latlng.toTurfFeature();
+    var guideLayer, i, layer, len, marker, markerPoint, polygon, ref, results;
+    marker = e.layers.getLayers().slice(0).pop();
+    markerPoint = marker.getLatLng().toTurfFeature();
     ref = this.options.guideLayers;
+    results = [];
     for (i = 0, len = ref.length; i < len; i++) {
       guideLayer = ref[i];
-      ref1 = guideLayer.getLayers();
-      for (j = 0, len1 = ref1.length; j < len1; j++) {
-        layer = ref1[j];
-        polygon = layer.toTurfFeature();
-        if (turfinside["default"](markerPoint, polygon, {
-          ignoreBoundary: false
-        })) {
-          poly = this._poly;
-          latlngs = poly.getLatLngs();
-          latlngs.splice(-1, 1);
-          this._poly.setLatLngs(latlngs);
-          markerCount = this._markers.length;
-          marker = this._markers[markerCount - 1];
-          if (marker) {
-            this._markers.pop();
-            this._map.removeLayer(marker);
-            this._updateGuide();
-            return;
+      if (typeof guideLayer.getLayers !== 'function') {
+        continue;
+      }
+      results.push((function() {
+        var j, len1, ref1, results1;
+        ref1 = guideLayer.getLayers();
+        results1 = [];
+        for (j = 0, len1 = ref1.length; j < len1; j++) {
+          layer = ref1[j];
+          polygon = layer.toTurfFeature();
+          if (turfinside["default"](markerPoint, polygon, {
+            ignoreBoundary: false
+          })) {
+            results1.push(this.deleteLastVertex());
+          } else {
+            results1.push(void 0);
           }
         }
-      }
+        return results1;
+      }).call(this));
     }
+    return results;
   },
   _draw_on_disabled: function() {
     if (this._mouseMarker) {
