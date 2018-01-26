@@ -511,16 +511,7 @@ class L.Cut.Polyline extends L.Handler
     kinks = turfKinks.default lineString2
 
     #if new polygon is self-intersecting, unkink it by rewinding splitter
-    # if kinks.features.length is 1
-    #   splitter = turfRewind splitter, true
-    #   slice2.splice 1, 1, splitter
-    #   lineString2 = @turfLineMerge slice2...
-    #
-    # if kinks.features.length > 1
-    #   console.error 'slice2 kinking'
-    #   throw new Error("kinks")
     if kinks.features.length > 0
-      console.error kinks.features.length
       splitter = turfRewind splitter, true
       slice2.splice 1, 1, splitter
       lineString2 = @turfLineMerge slice2...
@@ -568,10 +559,6 @@ class L.Cut.Polyline extends L.Handler
           if L.stamp(marker) == L.stamp(@_activeLayer.editing._verticesHandlers[0]._markers[0]) || L.stamp(marker) == L.stamp(@_activeLayer.editing._verticesHandlers[0]._markers[..].pop())
             marker.on 'move', @glueMarker, @
           marker.on 'move', @_moveMarker, @
-          # else
-          #   marker.on 'move', @_moveMarker, @
-          #
-      # @_activeLayer.editing._poly.on 'editdrag', @_moveMarker, @
 
       @_map.off 'click', @_finishDrawing, @
     catch e
@@ -611,13 +598,6 @@ class L.Cut.Polyline extends L.Handler
         @_activeLayer.editing._poly.bringToFront()
 
         @_map.fire L.Cutting.Polyline.Event.UPDATED, layers: [polygon1, polygon2]
-    catch err
-      console.error err
-      # marker._latlng = e.oldLatLng
-      # marker.update()
-      #revert
-      marker._latlng = marker._oldLatLng
-      marker.update()
 
 
   _hasAvailableLayers: ->
