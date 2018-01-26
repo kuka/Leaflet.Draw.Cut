@@ -26415,7 +26415,6 @@ L.Draw.Feature.DrawMixin = {
   },
   _draw_on_click: function(e) {
     var guideLayer, i, j, latlng, latlngs, layer, len, len1, marker, markerCount, markerPoint, poly, polygon, ref, ref1;
-    console.error('clicked', e);
     latlng = e.target._latlng;
     markerPoint = latlng.toTurfFeature();
     ref = this.options.guideLayers;
@@ -26435,6 +26434,7 @@ L.Draw.Feature.DrawMixin = {
           markerCount = this._markers.length;
           marker = this._markers[markerCount - 1];
           if (marker) {
+            this._markers.pop();
             this._map.removeLayer(marker);
             this._updateGuide();
             return;
