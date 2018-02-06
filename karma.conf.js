@@ -1,5 +1,5 @@
 // Karma configuration
-// Generated on Thu Feb 01 2018 16:50:10 GMT+0100 (CET)
+// Generated on Mon Feb 05 2018 17:00:18 GMT+0100 (CET)
 
 module.exports = function(config) {
   config.set({
@@ -11,13 +11,16 @@ module.exports = function(config) {
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
     frameworks: ['jasmine'],
+    plugins: ['karma-phantomjs-launcher', 'karma-jasmine', 'karma-chrome-launcher'],
 
 
     // list of files / patterns to load in the browser
     files: [
-      'dist/**/*.js',
-      'lib/**/*.js',
-      'spec/**/*.js'
+      { pattern: 'node_modules/leaflet/dist/leaflet-src.js', included: true },
+      { pattern: 'node_modules/lodash/lodash.js', included: true },
+      { pattern: 'node_modules/leaflet-draw/dist/leaflet.draw-src.js', included: true },
+      { pattern: 'dist/*.js', included: true },
+      {pattern: './spec/DrawCutPolylineSpec.js', included: true}
     ],
 
 
@@ -52,17 +55,31 @@ module.exports = function(config) {
 
 
     // enable / disable watching file and executing tests whenever any file changes
-    autoWatch: false,
+    autoWatch: true,
 
 
     // start these browsers
     // available browser launchers: https://npmjs.org/browse/keyword/karma-launcher
-    browsers: ['Chrome'],
+    browsers: ['PhantomJSCustom', 'Chrome'],
 
+
+    customLaunchers: {
+			'PhantomJSCustom': {
+				base: 'PhantomJS',
+				flags: ['--load-images=true'],
+				options: {
+					onCallback: function (data) {
+						if (data.render) {
+							page.render(data.render);
+						}
+					}
+				}
+			}
+		},
 
     // Continuous Integration mode
     // if true, Karma captures browsers, runs the tests and exits
-    singleRun: true,
+    singleRun: false,
 
     // Concurrency level
     // how many browser should be started simultaneous
