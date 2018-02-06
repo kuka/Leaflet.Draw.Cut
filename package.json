@@ -6,8 +6,8 @@
   "scripts": {
     "build": "webpack -p",
     "watch": "webpack --watch",
-    "unit-test": "karma start --single-run",
-    "test": "karma start"
+    "watch-test": "karma start",
+    "test": "karma start --single-run --browsers PhantomJS"
   },
   "keywords": [],
   "author": "Nicolas PROCUREUR",
