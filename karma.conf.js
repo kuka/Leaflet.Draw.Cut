@@ -7,20 +7,19 @@ module.exports = function(config) {
     // base path that will be used to resolve all patterns (eg. files, exclude)
     basePath: '',
 
-
     // frameworks to use
     // available frameworks: https://npmjs.org/browse/keyword/karma-adapter
     frameworks: ['jasmine'],
-    plugins: ['karma-phantomjs-launcher', 'karma-jasmine', 'karma-chrome-launcher'],
+    plugins: ['karma-phantomjs-launcher', 'karma-jasmine', 'karma-chrome-launcher', 'karma-webpack'],
 
 
     // list of files / patterns to load in the browser
     files: [
-      { pattern: 'node_modules/leaflet/dist/leaflet-src.js', included: true },
-      { pattern: 'node_modules/lodash/lodash.js', included: true },
-      { pattern: 'node_modules/leaflet-draw/dist/leaflet.draw-src.js', included: true },
-      { pattern: 'dist/*.js', included: true },
-      { pattern: './spec/DrawCutPolylineSpec.js', included: true }
+      'node_modules/leaflet/dist/leaflet-src.js',
+      'node_modules/lodash/lodash.js',
+      'node_modules/leaflet-draw/dist/leaflet.draw-src.js',
+      'dist/*.js',
+      'spec/*Spec.coffee'
     ],
 
 
@@ -28,10 +27,19 @@ module.exports = function(config) {
     exclude: [
     ],
 
-
+    webpack: {
+      module: {
+        rules: [{
+            test: /.coffee$/,
+            use: ['coffee-loader']
+          }
+        ]
+      }
+    },
     // preprocess matching files before serving them to the browser
     // available preprocessors: https://npmjs.org/browse/keyword/karma-preprocessor
     preprocessors: {
+      'spec/*Spec.coffee': ['webpack']
     },
 
 
