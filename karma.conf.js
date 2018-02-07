@@ -20,7 +20,7 @@ module.exports = function(config) {
       { pattern: 'node_modules/lodash/lodash.js', included: true },
       { pattern: 'node_modules/leaflet-draw/dist/leaflet.draw-src.js', included: true },
       { pattern: 'dist/*.js', included: true },
-      {pattern: './spec/DrawCutPolylineSpec.js', included: true}
+      { pattern: './spec/DrawCutPolylineSpec.js', included: true }
     ],
 
 
