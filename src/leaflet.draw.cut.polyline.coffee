@@ -275,10 +275,8 @@ class L.Cut.Polyline extends L.Handler
       @_activeLayer = null
       @_map.fire L.Cutting.Polyline.Event.UNSELECT, layer: layer
 
-  _cutMode: (e) ->
+  _cutMode: ->
     return unless @_activeLayer
-    mouseLatLng = e.event || e.latlng
-    mousePoint = mouseLatLng.toTurfFeature()
 
     if !@_activeLayer.cutting
       @_activeLayer.cutting = new L.Draw.Polyline(@_map)

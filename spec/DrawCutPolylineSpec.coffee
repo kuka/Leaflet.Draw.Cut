@@ -39,3 +39,26 @@ describe 'DrawCutPolyline', ->
     expect(getReadableArea(splitResult[0])).toEqual(getReadableArea(secondRectangle))
     expect(getReadableArea(splitResult[1])).toEqual(getReadableArea(firstRectangle))
 
+  it 'should enable the draw of the splitter', ->
+    handler = new L.Cut.Polyline(@map, featureGroup: L.featureGroup())
+    handler._activeLayer = L.polygon [[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]
+
+    expect(handler._activeLayer.cutting).toBeUndefined()
+
+    handler._cutMode()
+
+    splitter = handler._activeLayer.cutting
+    expect(splitter).toBeDefined()
+    expect(splitter.type).toBe("polyline")
+    expect(splitter.enabled).toBeTruthy()
+    expect(splitter._markers.length).toBe(0)
+    expect(splitter._mouseMarker).toBeDefined(0)
+
+  it 'should set the active layer as a snap target', ->
+    handler = new L.Cut.Polyline(@map, featureGroup: L.featureGroup())
+    handler._activeLayer = L.polygon [[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]
+
+    handler._cutMode()
+
+    splitter = handler._activeLayer.cutting
+    expect(splitter.options.guideLayers).toContain(handler._activeLayer)
