@@ -69,3 +69,18 @@ describe 'DrawCutPolyline', ->
     e.latlng = L.latLng(5, 5)
     klass._selectLayer(e)
     expect(@squarePolygon.selected).toBeFalsy()
+
+  it 'should put the marker on the polygon\'s outer ring if the mouse pointer is inside the polygon', ->
+    options = {}
+    options.featureGroup = new L.FeatureGroup()
+    klass = new L.Cut.Polyline(@map, options)
+    klass._activate(@lgSquarePolygon, { lat: 0, lng:0 })
+    e = {}
+    e.target = L.marker([1, 1])
+    e.latlng = e.target._latlng
+    klass.glueMarker(e)
+    expect(e.latlng == e.target._latlng).toBeFalsy()
+    closestLayer = L.GeometryUtil.closestLayer(@map, [@lgSquarePolygon], e.target._latlng)
+    expect(closestLayer.distance).toEqual(0)
+    closestLayer = L.GeometryUtil.closestLayer(@map, [@lgSquarePolygon], e.latlng)
+    expect(closestLayer.latlng.equals(e.target._latlng)).toBeTruthy()
