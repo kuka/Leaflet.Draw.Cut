@@ -8181,13 +8181,11 @@ L.Cut.Polyline = (function(superClass) {
     }
   };
 
-  Polyline.prototype._cutMode = function(e) {
-    var mouseLatLng, mousePoint, opts, pathOptions;
+  Polyline.prototype._cutMode = function() {
+    var opts, pathOptions;
     if (!this._activeLayer) {
       return;
     }
-    mouseLatLng = e.event || e.latlng;
-    mousePoint = mouseLatLng.toTurfFeature();
     if (!this._activeLayer.cutting) {
       this._activeLayer.cutting = new L.Draw.Polyline(this._map);
       opts = _.merge(this.options.snap, {
@@ -8388,6 +8386,7 @@ L.Cut.Polyline = (function(superClass) {
         return !(coord[0] === simpleFirstVertex[0] && coord[1] === simpleFirstVertex[1]) && !(coord[0] === simpleLastVertex[0] && coord[1] === simpleLastVertex[1]);
       });
       if (intersect.length > 0) {
+        debugger;
         throw new Error("kinks");
       }
     }

@@ -275,10 +275,8 @@ class L.Cut.Polyline extends L.Handler
       @_activeLayer = null
       @_map.fire L.Cutting.Polyline.Event.UNSELECT, layer: layer
 
-  _cutMode: (e) ->
+  _cutMode: ->
     return unless @_activeLayer
-    mouseLatLng = e.event || e.latlng
-    mousePoint = mouseLatLng.toTurfFeature()
 
     if !@_activeLayer.cutting
       @_activeLayer.cutting = new L.Draw.Polyline(@_map)
@@ -483,6 +481,7 @@ class L.Cut.Polyline extends L.Handler
         !(coord[0] is simpleFirstVertex[0] and coord[1] is simpleFirstVertex[1]) and !(coord[0] is simpleLastVertex[0] and coord[1] is simpleLastVertex[1])
 
       if intersect.length > 0
+        debugger
         throw new Error("kinks")
 
     #### First polygon ####
