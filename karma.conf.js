@@ -18,6 +18,7 @@ module.exports = function(config) {
       'node_modules/leaflet/dist/leaflet-src.js',
       'node_modules/lodash/lodash.js',
       'node_modules/leaflet-draw/dist/leaflet.draw-src.js',
+      'node_modules/leaflet-snap/leaflet.snap.js',
       'dist/*.js',
       'spec/*Spec.coffee'
     ],

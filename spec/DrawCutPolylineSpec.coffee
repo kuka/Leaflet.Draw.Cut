@@ -136,3 +136,27 @@ describe 'DrawCutPolyline', ->
 
     # Needs to use anonymous function as jasmine try to invoke it
     expect(() -> handler._cut(poly, splitter)).toThrowError('kinks')
+
+  it 'should pin the first point of the splitter at the mouse position', ->
+    handler = new L.Cut.Polyline(@map, featureGroup: L.featureGroup())
+    handler._activeLayer = L.polygon [[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]
+    handler._activeLayer.addTo @map
+
+    splitter = handler._activeLayer.cutting = new L.Draw.Polyline(@map)
+
+    #We need to activate snap to be able to set origin
+    splitter.setOptions guideLayers: [handler._activeLayer]
+
+    splitter.enable()
+    splitter._mouseMarker.setLatLng([0,0])
+
+    expect(splitter.enabled).toBeTruthy()
+    expect(splitter._markers.length).toBe(0)
+
+    handler._glue_on_click()
+    expect(splitter._markers.length).toBe(1)
+
+    marker = splitter._markers[..].pop()
+    expect([marker._latlng.lat, marker._latlng.lng]).toEqual([0,0])
+    expect(handler._activeLayer.glue).toBeFalsy()
+    expect(handler._startPoint).toBe(marker)
