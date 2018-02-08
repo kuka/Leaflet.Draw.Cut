@@ -481,7 +481,6 @@ class L.Cut.Polyline extends L.Handler
         !(coord[0] is simpleFirstVertex[0] and coord[1] is simpleFirstVertex[1]) and !(coord[0] is simpleLastVertex[0] and coord[1] is simpleLastVertex[1])
 
       if intersect.length > 0
-        debugger
         throw new Error("kinks")
 
     #### First polygon ####

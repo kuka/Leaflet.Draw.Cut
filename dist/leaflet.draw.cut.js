@@ -8386,7 +8386,6 @@ L.Cut.Polyline = (function(superClass) {
         return !(coord[0] === simpleFirstVertex[0] && coord[1] === simpleFirstVertex[1]) && !(coord[0] === simpleLastVertex[0] && coord[1] === simpleLastVertex[1]);
       });
       if (intersect.length > 0) {
-        debugger;
         throw new Error("kinks");
       }
     }
