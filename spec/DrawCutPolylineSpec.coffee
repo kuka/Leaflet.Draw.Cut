@@ -39,7 +39,7 @@ describe 'DrawCutPolyline', ->
     splitResult = klass._cut(@lgSquarePolygon, splitLine)
     expect(getReadableArea(splitResult[0])).toEqual(getReadableArea(secondRectangle))
     expect(getReadableArea(splitResult[1])).toEqual(getReadableArea(firstRectangle))
-    
+
   it 'should activate a layer', ->
     options = {}
     options.featureGroup = new L.FeatureGroup()
@@ -84,6 +84,7 @@ describe 'DrawCutPolyline', ->
     expect(splitter.enabled).toBeTruthy()
     expect(splitter._markers.length).toBe(0)
     expect(splitter._mouseMarker).toBeDefined(0)
+    expect(handler._startPoint).toBeUndefined()
 
   it 'should set the active layer as a snap target', ->
     handler = new L.Cut.Polyline(@map, featureGroup: L.featureGroup())
@@ -93,3 +94,11 @@ describe 'DrawCutPolyline', ->
 
     splitter = handler._activeLayer.cutting
     expect(splitter.options.guideLayers).toContain(handler._activeLayer)
+
+  it 'should throw an error as the splitter intersects the outer ring', ->
+    handler = new L.Cut.Polyline(@map, featureGroup: L.featureGroup())
+    poly = L.polygon [[-0.045404,44.70503],[-0.045973,44.704321],[-0.042626,44.703047],[-0.041596,44.704793],[-0.043108,44.705289],[-0.043731,44.704465],[-0.045404,44.70503]]
+    splitter = L.polyline [[-0.04449798000371161, 44.70472402193789], [-0.041596,44.704793]]
+
+    # Needs to use anonymous function as jasmine try to invoke it
+    expect(() -> handler._cut(poly, splitter)).toThrowError('kinks')
