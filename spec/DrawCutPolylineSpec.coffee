@@ -1,6 +1,6 @@
 describe 'DrawCutPolyline', ->
 
-  beforeAll ->
+  beforeEach ->
     @map = new L.Map(document.createElement('div')).setView([0, 0], 15)
     squareLatlngs = [[0, 0], [2, 0], [2, 2], [0, 2], [0, 0]]
     @squarePolygon = L.polygon(squareLatlngs)
@@ -39,6 +39,25 @@ describe 'DrawCutPolyline', ->
     splitResult = klass._cut(@lgSquarePolygon, splitLine)
     expect(getReadableArea(splitResult[0])).toEqual(getReadableArea(secondRectangle))
     expect(getReadableArea(splitResult[1])).toEqual(getReadableArea(firstRectangle))
+
+  it 'should split a polygon into two new polygons when drawing a polyline from one point to another that are not picked among the polygon\'s coordinates', ->
+    options = {}
+    options.featureGroup = new L.FeatureGroup()
+    klass = new L.Cut.Polyline(@map, options)
+    klass._activate(@squarePolygon, { lat: 0, lng:0 })
+    e1 = {}
+    e1.target = L.marker([0.2, 0.4])
+    e1.latlng = e1.target._latlng
+    klass.glueMarker(e1)
+    e2 = {}
+    e2.target = L.marker([1.4, 1.6])
+    e2.latlng = e2.target._latlng
+    klass.glueMarker(e2)
+    splitLine = L.polyline([e1.target._latlng, [0.7, 0.7], [1.2, 1.2], e2.target._latlng])
+    splitResult = klass._cut(@squarePolygon, splitLine)
+    expect(splitResult[0].toGeoJSON().geometry.type).toEqual('Polygon')
+    expect(splitResult[1].toGeoJSON().geometry.type).toEqual('Polygon')
+    expect(splitResult[2].toGeoJSON().geometry.type).toEqual('LineString')
 
   it 'should activate a layer', ->
     options = {}
