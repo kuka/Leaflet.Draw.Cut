@@ -8181,13 +8181,11 @@ L.Cut.Polyline = (function(superClass) {
     }
   };
 
-  Polyline.prototype._cutMode = function(e) {
-    var mouseLatLng, mousePoint, opts, pathOptions;
+  Polyline.prototype._cutMode = function() {
+    var opts, pathOptions;
     if (!this._activeLayer) {
       return;
     }
-    mouseLatLng = e.event || e.latlng;
-    mousePoint = mouseLatLng.toTurfFeature();
     if (!this._activeLayer.cutting) {
       this._activeLayer.cutting = new L.Draw.Polyline(this._map);
       opts = _.merge(this.options.snap, {
