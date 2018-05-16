@@ -1,22 +1,12 @@
-const ExtractTextPlugin = require("extract-text-webpack-plugin");
-
 module.exports = {
   module: {
     rules: [{
-        test: /\.coffee$/,
-        use: ['coffee-loader']
-      },
-      {
-        test: /\.scss$/,
-        use: ExtractTextPlugin.extract({
-          fallback: 'style-loader',
-          //resolve-url-loader may be chained before sass-loader if necessary
-          use: ['css-loader', 'sass-loader']
-        })
+        test: /\.js/,
+        use: ['babel-loader']
       }
     ]
   },
-  entry: ['./src/leaflet.draw.cut.coffee', './src/leaflet.draw.cut.polyline.coffee', './src/util.coffee', './src/geographic_util.coffee', './src/leaflet.draw.cut.scss', './src/leaflet.draw.overlapping.drawing.locking.coffee'],
+  entry: ['./src/leaflet.draw.cut.js', './src/leaflet.draw.cut.polyline.js', './src/util.js', './src/geographic_util.js', './src/leaflet.draw.overlapping.drawing.locking.js'],
   output: {
     path: __dirname + '/dist',
     filename: 'leaflet.draw.cut.js'
@@ -26,9 +16,6 @@ module.exports = {
     'lodash': '_'
   },
   resolve: {
-    extensions: ['.coffee', '.js']
-  },
-  plugins: [
-    new ExtractTextPlugin('leaflet.draw.cut.css')
-  ]
+    extensions: ['.js', '.js']
+  }
 }

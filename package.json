@@ -18,6 +18,9 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@babel/core": "^7.0.0-beta.40",
+    "@babel/preset-env": "^7.0.0-beta.40",
+    "babel-loader": "^8.0.0-beta.0",
     "coffee-loader": "^0.8.0",
     "coffeescript": "^1.12.7",
     "css-loader": "^0.28.7",
@@ -50,7 +53,7 @@
     "leaflet": "^1.2.0",
     "leaflet-draw": "^0.4.12",
     "leaflet-geometryutil": "^0.8.0",
-    "leaflet-snap": "../Leaflet.Snap",
+    "leaflet-snap": "^0.0.4",
     "lodash": "^4.17.4"
   }
 }
